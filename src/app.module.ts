@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { User } from './models/user.model';
+import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { User } from './models/user.model';
       }),
     }),
     AuthModule,
+    StripePaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

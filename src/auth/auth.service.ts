@@ -242,7 +242,6 @@ export class AuthService {
     ) {
       throw new BadRequestException('Invalid or expired OTP');
     }
-
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await user.update({
       password: hashedPassword,
