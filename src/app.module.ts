@@ -12,7 +12,7 @@ import { User } from './models/user.model';
       dialect: 'postgres',
       host: 'localhost',
       port: 5432,
-      username: 'root',
+      username: 'postgres',
       password: '12345678',
       database: 'boost-lab',
       autoLoadModels: true,
