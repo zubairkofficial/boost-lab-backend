@@ -1,24 +1,32 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SequelizeModule } from '@nestjs/sequelize';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { SequelizeModule } from '@nestjs/sequelize';
 import { User } from './models/user.model';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, 
+    }),
+    SequelizeModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        dialect: configService.get<'postgres'>('DB_DIALECT'),
+        host: configService.get<string>('DB_HOST'),
+        port: 5432,
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
+        autoLoadModels: true,
+        synchronize: true,
+        models: [User],
+      }),
+    }),
     AuthModule,
-    SequelizeModule.forRoot({
-      dialect: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: '12345678',
-      database: 'boost-lab',
-      autoLoadModels: true,
-      synchronize: true,
-      models: [User],
-    })
   ],
   controllers: [AppController],
   providers: [AppService],

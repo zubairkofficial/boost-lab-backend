@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
   Delete,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -68,10 +69,19 @@ export class AuthController {
       newPassword,
     );
   }
+  // get user profile
   @UseGuards(AuthGuard('jwt'))
   @Get('/me')
-  profile(@Req() req) {
-    return req.user;
+  async profile(@Req() req) {
+    const user = await this.authService.getUserById(req.user.id);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return {
+      statusCode: 200,
+      message: 'User profile fetched successfully',
+      data: user,
+    };
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
