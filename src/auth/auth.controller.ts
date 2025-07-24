@@ -44,17 +44,18 @@ export class AuthController {
   login(@Body() dto: { email: string; password: string }) {
     return this.authService.login(dto.email, dto.password);
   }
-  @Post('/forgot-password')
+@Post('/forgot-password')
   async forgotPassword(@Body('email') email: string) {
-    return this.authService.sendOtp(email);
+    // Generate token, store it, and send reset link to email
+    return this.authService.sendResetLink(email);
   }
   @Post('/reset-password')
   async resetPassword(
-    @Body('email') email: string,
-    @Body('otp') otp: string,
+    @Body('token') token: string,
     @Body('newPassword') newPassword: string,
   ) {
-    return this.authService.resetPassword(email, otp, newPassword);
+    // Verify token and reset password
+    return this.authService.resetPasswordWithToken(token, newPassword);
   }
   @UseGuards(AuthGuard('jwt'))
   @Patch('/change-password')
@@ -114,4 +115,5 @@ export class AuthController {
   async deleteUser(@Param('id') id: number) {
     return this.authService.deleteUser(id);
   }
+
 }

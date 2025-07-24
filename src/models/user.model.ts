@@ -67,4 +67,12 @@ export class User extends Model {
     defaultValue: null,
   })
   declare otpExpiry: Date | null;
+
+
+    @AllowNull(true)
+  @Column({
+    type: DataType.DATE,
+    defaultValue: null,
+  })
+  declare resetTokenExpiry: Date | null;
 }

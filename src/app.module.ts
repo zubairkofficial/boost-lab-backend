@@ -18,7 +18,7 @@ import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
       useFactory: (configService: ConfigService) => ({
         dialect: configService.get<'postgres'>('DB_DIALECT'),
         host: configService.get<string>('DB_HOST'),
-        port: 5432,
+        port: configService.get<number>('DB_PORT'),
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),

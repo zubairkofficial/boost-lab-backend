@@ -135,6 +135,8 @@ export class AuthService {
       },
     };
   }
+
+  
   async updateRecord(
     adminId: number,
     userId: number,
@@ -248,6 +250,68 @@ export class AuthService {
       otp: null,
       otpExpiry: null,
     });
+    return { message: 'Password reset successfully' };
+  }
+
+
+
+
+
+ // Send password reset link with token
+  async sendResetLink(email: string) {
+    console.log('Attempting to send reset link to:', email);
+    console.log('Using EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('Using EMAIL_PASS:', process.env.EMAIL_PASS ? '*' : 'undefined');
+    // ...existing code...
+    const user = await this.userModel.findOne({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+    // Generate secure token
+    const token = Math.random().toString(36).substr(2) + Date.now().toString(36);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+    await user.update({ resetToken: token, resetTokenExpiry: expiresAt });
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5174'}/auth/reset-password?token=${token}`;
+    console.log('Generated reset URL:', resetUrl);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset Link',
+      text: `Click the link to reset your password: ${resetUrl}\nThis link expires in 1 hour.`,
+    };
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      if (info.accepted && info.accepted.length > 0) {
+        console.log('Reset email sent successfully to:', info.accepted.join(', '));
+      } else {
+        console.error('Reset email not accepted:', info);
+        throw new BadRequestException('Email not accepted by server');
+      }
+    } catch (err) {
+      console.error('Error sending reset email:', err);
+      throw new BadRequestException('Failed to send reset email');
+    }
+    return { message: 'Password reset link sent to email' };
+  }
+
+  // Reset password using token
+  async resetPasswordWithToken(token: string, newPassword: string) {
+    const user = await this.userModel.findOne({ where: { resetToken: token } });
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+    if (!user.resetTokenExpiry || user.resetTokenExpiry.getTime() < Date.now()) {
+      throw new BadRequestException('Reset token has expired');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ password: hashedPassword, resetToken: null, resetTokenExpiry: null });
     return { message: 'Password reset successfully' };
   }
 }
