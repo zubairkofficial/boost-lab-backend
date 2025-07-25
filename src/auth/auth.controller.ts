@@ -1,119 +1,66 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Patch,
-  Param,
-  Req,
-  UseGuards,
-  Delete,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param, Req, Headers, UseGuards, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthGuard } from '@nestjs/passport';
-import { Roles } from './roles.decorator';
-import { RolesGuard } from './roles.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  /** ✅ Register */
   @Post('/register')
   register(@Body() dto: { name: string; email: string; password: string }) {
     return this.authService.register(dto.name, dto.email, dto.password);
   }
-  @Post('/register/send-otp')
-  sendRegisterOtp(
-    @Body() dto: { name: string; email: string; password: string },
-  ) {
-    return this.authService.register(dto.name, dto.email, dto.password);
-  }
-  @Post('/register/verify-otp')
-  verifyRegisterOtp(
-    @Body() dto: { name: string; email: string; password: string; otp: string },
-  ) {
-    return this.authService.register(
-      dto.name,
-      dto.email,
-      dto.password,
-      dto.otp,
-    );
-  }
+
+  /** ✅ Login */
   @Post('/login')
   login(@Body() dto: { email: string; password: string }) {
     return this.authService.login(dto.email, dto.password);
   }
-@Post('/forgot-password')
-  async forgotPassword(@Body('email') email: string) {
-    // Generate token, store it, and send reset link to email
+
+  /** ✅ Get profile using Supabase token */
+  @Get('/me')
+  async profile(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.replace('Bearer ', '');
+    return this.authService.getUserFromToken(token);
+  }
+
+  /** ✅ Forgot password */
+  @Post('/forgot-password')
+  forgotPassword(@Body('email') email: string) {
     return this.authService.sendResetLink(email);
   }
+
+  /** ✅ Reset password (after clicking Supabase link) */
   @Post('/reset-password')
-  async resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    // Verify token and reset password
-    return this.authService.resetPasswordWithToken(token, newPassword);
-  }
-  @UseGuards(AuthGuard('jwt'))
-  @Patch('/change-password')
-  async changePassword(
-    @Req() req,
-    @Body('oldPassword') oldPassword: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    return this.authService.changePassword(
-      req.user.id,
-      oldPassword,
-      newPassword,
-    );
-  }
-  // get user profile
-  @UseGuards(AuthGuard('jwt'))
-  @Get('/me')
-  async profile(@Req() req) {
-    const user = await this.authService.getUserById(req.user.id);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-    return {
-      statusCode: 200,
-      message: 'User profile fetched successfully',
-      data: user,
-    };
+  resetPassword(@Body('newPassword') newPassword: string) {
+    return this.authService.resetPassword(newPassword);
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  /** ✅ Change password (user must send token) */
+  @Patch('/change-password')
+  changePassword(
+    @Headers('authorization') authHeader: string,
+    @Body('newPassword') newPassword: string
+  ) {
+    const token = authHeader?.replace('Bearer ', '');
+    return this.authService.changePassword(token, newPassword);
+  }
+
+  /** ✅ Admin: Get all users */
   @Get('/users')
   getAllUsers() {
-    return this.authService.getAll();
+    return this.authService.getAllUsers();
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  /** ✅ Admin: Update user metadata */
   @Patch('/admin-update/:userId')
-  async adminUpdate(
-    @Req() req,
-    @Param('userId') userId: number,
-    @Body() body: any,
-  ) {
-    return this.authService.updateRecord(
-      req.user.id,
-      userId,
-      body.name,
-      body.email,
-      body.password,
-      body.role,
-    );
-  }
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
-  @Delete('/users/:id')
-  async deleteUser(@Param('id') id: number) {
-    return this.authService.deleteUser(id);
+  updateUser(@Param('userId') userId: string, @Body() body: any) {
+    return this.authService.updateUser(userId, body);
   }
 
+  /** ✅ Admin: Delete user */
+  @Delete('/users/:userId')
+  deleteUser(@Param('userId') userId: string) {
+    return this.authService.deleteUser(userId);
+  }
 }
