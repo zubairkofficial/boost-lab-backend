@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { User } from './../models/user.model';
@@ -10,18 +14,29 @@ dotenv.config();
 export class AuthService {
   private supabase: SupabaseClient;
   private stripe: Stripe;
-  
+
   constructor() {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_KEY!
+      process.env.SUPABASE_KEY!,
     );
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2025-06-30.basil',
     });
   }
 
-  async register(name: string, email: string, password: string, planId?: number) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    planId?: number,
+  ) {
+    // Check if email already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
     // Step 1: Create Stripe Customer
     const customer = await this.stripe.customers.create({
       name,
@@ -44,7 +59,7 @@ export class AuthService {
     await User.create({
       name,
       email,
-      password, // 🔐 Consider hashing this before saving
+      password, // hash in production!
       stripeCustomerId: customer.id,
       planId: planId || null,
     });
@@ -75,15 +90,19 @@ export class AuthService {
   /** ✅ Get user profile from Supabase token */
   async getUserFromToken(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
-    if (error || !data.user) throw new UnauthorizedException('Invalid or expired token');
+    if (error || !data.user)
+      throw new UnauthorizedException('Invalid or expired token');
     return data.user;
   }
 
   /** ✅ Send password reset email */
   async sendResetLink(email: string) {
-    const { data, error } = await this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL}/auth/reset-password`,
-    });
+    const { data, error } = await this.supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: `${process.env.FRONTEND_URL}/auth/reset-password`,
+      },
+    );
 
     if (error) throw new BadRequestException(error.message);
 
@@ -93,10 +112,16 @@ export class AuthService {
   /** ✅ Reset password (user already verified via link) */
   async resetPassword(newPassword: string) {
     // When the user clicks the Supabase reset link, they are auto-authenticated
-    const { data: { user }, error: getUserError } = await this.supabase.auth.getUser();
-    if (getUserError || !user) throw new UnauthorizedException('Not authenticated');
+    const {
+      data: { user },
+      error: getUserError,
+    } = await this.supabase.auth.getUser();
+    if (getUserError || !user)
+      throw new UnauthorizedException('Not authenticated');
 
-    const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+    const { error } = await this.supabase.auth.updateUser({
+      password: newPassword,
+    });
     if (error) throw new BadRequestException(error.message);
 
     return { message: 'Password reset successfully' };
@@ -104,8 +129,12 @@ export class AuthService {
 
   /** ✅ Change password (user must be logged in) */
   async changePassword(token: string, newPassword: string) {
-    const { data: { user }, error: verifyError } = await this.supabase.auth.getUser(token);
-    if (verifyError || !user) throw new UnauthorizedException('Invalid session');
+    const {
+      data: { user },
+      error: verifyError,
+    } = await this.supabase.auth.getUser(token);
+    if (verifyError || !user)
+      throw new UnauthorizedException('Invalid session');
 
     const { error } = await this.supabase.auth.updateUser({
       password: newPassword,
@@ -132,43 +161,16 @@ export class AuthService {
 
   /** ✅ Update user role or metadata (admin only) */
   async updateUser(userId: string, metadata: any) {
-    const { data, error } = await this.supabase.auth.admin.updateUserById(userId, {
-      user_metadata: metadata,
-    });
+    const { data, error } = await this.supabase.auth.admin.updateUserById(
+      userId,
+      {
+        user_metadata: metadata,
+      },
+    );
     if (error) throw new BadRequestException(error.message);
     return { message: 'User updated successfully', data };
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import {
 //   BadRequestException,
@@ -308,7 +310,6 @@ export class AuthService {
 //     };
 //   }
 
-  
 //   async updateRecord(
 //     adminId: number,
 //     userId: number,
@@ -424,10 +425,6 @@ export class AuthService {
 //     });
 //     return { message: 'Password reset successfully' };
 //   }
-
-
-
-
 
 //  // Send password reset link with token
 //   async sendResetLink(email: string) {
