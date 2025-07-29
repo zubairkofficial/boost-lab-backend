@@ -31,44 +31,46 @@ export class AuthService {
     password: string,
     planId?: number,
   ) {
-    // Check if email already exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
+    try {
+      // Check if email already exists
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        throw new BadRequestException('Email already exists');
+      }
+  
+      // Step 1 & 2: Create Stripe Customer and Register on Supabase in parallel
+      const [customer, supabaseResponse] = await Promise.all([
+        this.stripe.customers.create({ name, email }), // Step 1: Create Stripe Customer
+        this.supabase.auth.signUp({ // Step 2: Register on Supabase
+          email,
+          password,
+          options: {
+            data: { name },
+            emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
+          },
+        }),
+      ]);
+  
+      if (supabaseResponse.error) throw new BadRequestException(supabaseResponse.error.message);
+  
+      // Step 3: Save to your own DB
+      await User.create({
+        name,
+        email,
+        password, // hash in production!
+        stripeCustomerId: customer.id,
+        planId: planId || null,
+      });
+  
+      return {
+        message: 'Registration successful. Please check your email.',
+        user: supabaseResponse.data.user,
+      };
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
-
-    // Step 1: Create Stripe Customer
-    const customer = await this.stripe.customers.create({
-      name,
-      email,
-    });
-
-    // Step 2: Register on Supabase
-    const { data, error } = await this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name },
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
-      },
-    });
-
-    if (error) throw new BadRequestException(error.message);
-
-    // Step 3: Save to your own DB
-    await User.create({
-      name,
-      email,
-      password, // hash in production!
-      stripeCustomerId: customer.id,
-      planId: planId || null,
-    });
-
-    return {
-      message: 'Registration successful. Please check your email.',
-      user: data.user,
-    };
   }
+  
 
   /** ✅ Login user with Supabase */
   async login(email: string, password: string) {
@@ -169,6 +171,21 @@ export class AuthService {
     );
     if (error) throw new BadRequestException(error.message);
     return { message: 'User updated successfully', data };
+  }
+
+  /** ✅ Resend confirmation email */
+  async resendConfirmationEmail(email: string) {
+    const { data, error } = await this.supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
+      },
+    });
+
+    if (error) throw new BadRequestException(error.message);
+
+    return { message: 'Confirmation email sent successfully' };
   }
 }
 

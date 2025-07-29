@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Patch, Param, Req, Headers, UseGuards, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param, Req, Headers, UseGuards, Delete, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -8,7 +8,11 @@ export class AuthController {
   /** ✅ Register */
   @Post('/register')
   register(@Body() dto: { name: string; email: string; password: string; planId?: number }) {
-    return this.authService.register(dto.name, dto.email, dto.password, dto.planId);
+    try {
+      return this.authService.register(dto.name, dto.email, dto.password, dto.planId);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   /** ✅ Login */
@@ -62,5 +66,11 @@ export class AuthController {
   @Delete('/users/:userId')
   deleteUser(@Param('userId') userId: string) {
     return this.authService.deleteUser(userId);
+  }
+
+  /** ✅ Resend confirmation email */
+  @Post('/resend-confirmation')
+  resendConfirmationEmail(@Body('email') email: string) {
+    return this.authService.resendConfirmationEmail(email);
   }
 }
