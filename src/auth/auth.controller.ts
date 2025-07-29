@@ -7,8 +7,8 @@ export class AuthController {
 
   /** ✅ Register */
   @Post('/register')
-  register(@Body() dto: { name: string; email: string; password: string }) {
-    return this.authService.register(dto.name, dto.email, dto.password);
+  register(@Body() dto: { name: string; email: string; password: string; planId?: number }) {
+    return this.authService.register(dto.name, dto.email, dto.password, dto.planId);
   }
 
   /** ✅ Login */

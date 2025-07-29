@@ -6,11 +6,12 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { User } from './models/user.model';
 import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
+import { PlansModule } from './plans/plans.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, 
+      isGlobal: false,
     }),
     SequelizeModule.forRootAsync({
       imports: [ConfigModule],
@@ -29,6 +30,7 @@ import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
     }),
     AuthModule,
     StripePaymentModule,
+    PlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

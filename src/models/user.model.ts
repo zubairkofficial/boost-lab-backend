@@ -7,7 +7,9 @@ import {
   Unique,
   AllowNull,
   Default,
+  ForeignKey,
 } from 'sequelize-typescript';
+import { Plan } from './plans.model';
 
 @Table({
   tableName: 'users',
@@ -21,23 +23,14 @@ export class User extends Model {
   })
   declare id: number;
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-  })
+  @Column({ type: DataType.STRING, allowNull: false })
   declare name: string;
 
   @Unique
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-  })
+  @Column({ type: DataType.STRING, allowNull: false })
   declare email: string;
 
-  @Column({
-    type: DataType.TEXT,
-    allowNull: false,
-  })
+  @Column({ type: DataType.TEXT, allowNull: false })
   declare password: string;
 
   @Column({
@@ -47,13 +40,6 @@ export class User extends Model {
   })
   declare role: 'user' | 'admin';
 
-  @AllowNull(true)
-  @Column({
-    type: DataType.STRING,
-    defaultValue: null,
-  })
-  declare otp: string | null;
-
   @Default('pending')
   @Column({
     type: DataType.ENUM('pending', 'active'),
@@ -62,17 +48,15 @@ export class User extends Model {
   declare status: 'pending' | 'active';
 
   @AllowNull(true)
-  @Column({
-    type: DataType.DATE,
-    defaultValue: null,
-  })
-  declare otpExpiry: Date | null;
-
-
-    @AllowNull(true)
-  @Column({
-    type: DataType.DATE,
-    defaultValue: null,
-  })
+  @Column(DataType.DATE)
   declare resetTokenExpiry: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  declare stripeCustomerId: string | null;
+
+  @ForeignKey(() => Plan)
+  @AllowNull(true)
+  @Column(DataType.INTEGER)
+  declare planId: number | null;
 }

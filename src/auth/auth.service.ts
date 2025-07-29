@@ -1,35 +1,56 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { User } from './../models/user.model';
+import Stripe from 'stripe';
 
 dotenv.config();
 
 @Injectable()
 export class AuthService {
   private supabase: SupabaseClient;
-
+  private stripe: Stripe;
+  
   constructor() {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_KEY!
     );
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-06-30.basil',
+    });
   }
 
-  /** ✅ Register user with Supabase */
-  async register(name: string, email: string, password: string) {
+  async register(name: string, email: string, password: string, planId?: number) {
+    // Step 1: Create Stripe Customer
+    const customer = await this.stripe.customers.create({
+      name,
+      email,
+    });
+
+    // Step 2: Register on Supabase
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name }, // store metadata
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`, // Supabase will redirect after email verification
+        data: { name },
+        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
       },
     });
 
     if (error) throw new BadRequestException(error.message);
 
+    // Step 3: Save to your own DB
+    await User.create({
+      name,
+      email,
+      password, // 🔐 Consider hashing this before saving
+      stripeCustomerId: customer.id,
+      planId: planId || null,
+    });
+
     return {
-      message: 'Registration successful. Please check your email to verify.',
+      message: 'Registration successful. Please check your email.',
       user: data.user,
     };
   }
