@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { User } from './models/user.model';
 import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
 import { PlansModule } from './plans/plans.module';
+import { TestResultModule } from './test-result/test-result.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PlansModule } from './plans/plans.module';
     AuthModule,
     StripePaymentModule,
     PlansModule,
+    TestResultModule,
   ],
   controllers: [AppController],
   providers: [AppService],
