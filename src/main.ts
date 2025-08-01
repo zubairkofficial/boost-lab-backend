@@ -6,7 +6,7 @@ import { seedAdmin } from './auth/Seeder/admin-seeder';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
-
+app.setGlobalPrefix("api/v1")
   const sequelize = app.get(Sequelize);
   await sequelize.sync({ alter: true });
 
