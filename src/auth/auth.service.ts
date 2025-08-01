@@ -46,7 +46,7 @@ export class AuthService {
           password,
           options: {
             data: { name },
-            emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
+            emailRedirectTo: `${process.env.BASE_URL}/auth/login`,
           },
         }),
       ]);
@@ -102,7 +102,7 @@ export class AuthService {
     const { data, error } = await this.supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${process.env.FRONTEND_URL}/auth/reset-password`,
+        redirectTo: `${process.env.BASE_URL}/auth/reset-password`,
       },
     );
 
@@ -179,7 +179,7 @@ export class AuthService {
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/login`,
+        emailRedirectTo: `${process.env.BASE_URL}/auth/login`,
       },
     });
 
