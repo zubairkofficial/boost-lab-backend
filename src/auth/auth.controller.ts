@@ -1,27 +1,55 @@
-import { Controller, Post, Body, Get, Patch, Param, Req, Headers, UseGuards, Delete, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Patch,
+  Param,
+  Req,
+  Headers,
+  UseGuards,
+  Delete,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  /** ✅ Register */
   @Post('/register')
-  register(@Body() dto: { name: string; email: string; password: string; planId?: number }) {
+  register(
+    @Body()
+    dto: {
+      name: string;
+      email: string;
+      password: string;
+      planId?: number;
+    },
+  ) {
     try {
-      return this.authService.register(dto.name, dto.email, dto.password, dto.planId);
+      return this.authService.register(
+        dto.name,
+        dto.email,
+        dto.password,
+        dto.planId,
+      );
     } catch (error) {
       throw new BadRequestException(error.message);
     }
   }
 
-  /** ✅ Login */
   @Post('/login')
   login(@Body() dto: { email: string; password: string }) {
     return this.authService.login(dto.email, dto.password);
   }
 
-  /** ✅ Get profile using Supabase token */
+  @Post('logout')
+  async logout() {
+    return this.authService.logout();
+  }
+
+
   @Get('/me')
   async profile(@Headers('authorization') authHeader: string) {
     const token = authHeader?.replace('Bearer ', '');
@@ -44,7 +72,7 @@ export class AuthController {
   @Patch('/change-password')
   changePassword(
     @Headers('authorization') authHeader: string,
-    @Body('newPassword') newPassword: string
+    @Body('newPassword') newPassword: string,
   ) {
     const token = authHeader?.replace('Bearer ', '');
     return this.authService.changePassword(token, newPassword);
