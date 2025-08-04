@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { User } from './models/user.model';
-import { StripePaymentModule } from './stripe-payment/stripe-payment.module';
 import { PlansModule } from './plans/plans.module';
 import { TestResultModule } from './test-result/test-result.module';
 
@@ -30,7 +29,6 @@ import { TestResultModule } from './test-result/test-result.module';
       }),
     }),
     AuthModule,
-    StripePaymentModule,
     PlansModule,
     TestResultModule,
   ],
