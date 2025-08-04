@@ -182,12 +182,14 @@ export class AuthService {
 
     return { message: 'Confirmation email sent successfully' };
   }
-
+    /* Logout user */
   async logout(): Promise<{ message: string }> {
     const { error } = await this.supabase.auth.signOut();
+
     if (error) {
       throw new BadRequestException('Failed to log out');
     }
+
     return { message: 'Logout successful' };
   }
 
