@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
+import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
+import { User } from '../../models/user.model';
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
+  process.env.SUPABASE_KEY!,
 );
 
 export async function seedAdmin() {
@@ -23,8 +25,23 @@ export async function seedAdmin() {
   });
 
   if (error) {
-    console.error('❌ Failed to create admin:', error.message);
-  } else {
-    console.log('✅ Admin user created successfully:', data.user?.email);
+    console.error('Failed to create Supabase user:', error.message);
+    return;
   }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await User.create({
+    name,
+    email,
+    password: hashedPassword,
+    role: 'admin',
+    status: 'active',
+    stripeCustomerId: null,
+    SubscriptionStatus: 'Free',
+    planId: null,
+    resetTokenExpiry: null,
+  });
+
+  console.log('Admin user created successfully:', data.user?.email);
 }

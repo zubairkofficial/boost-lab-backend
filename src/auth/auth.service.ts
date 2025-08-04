@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import * as bcrypt from 'bcrypt';
 import { User } from './../models/user.model';
 import Stripe from 'stripe';
 
@@ -49,12 +50,14 @@ export class AuthService {
         }),
       ]);
 
-      if (supabaseResponse.error)
+      if (supabaseResponse.error) {
         throw new BadRequestException(supabaseResponse.error.message);
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
       await User.create({
         name,
         email,
-        password,
+        password: hashedPassword,
         stripeCustomerId: customer.id,
         planId: planId || null,
       });

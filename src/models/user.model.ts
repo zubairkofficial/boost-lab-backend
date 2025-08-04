@@ -55,6 +55,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   declare stripeCustomerId: string | null;
 
+  @Default('Free')
+  @Column({
+    type: DataType.ENUM('Free', 'Paid', 'AutoSubscriber'),
+    allowNull: false,
+  })
+  declare SubscriptionStatus: 'Free' | 'Paid' | 'AutoSubscriber';
+
   @ForeignKey(() => Plan)
   @AllowNull(true)
   @Column(DataType.INTEGER)
