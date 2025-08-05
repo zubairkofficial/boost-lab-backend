@@ -32,10 +32,10 @@ export class AuthService {
     planId?: number,
   ) {
     try {
-      const existingUser = await User.findOne({ where: { email } });
-      if (existingUser) {
-        throw new BadRequestException('Email already exists');
-      }
+      // const existingUser = await User.findOne({ where: { email } });
+      // if (existingUser) {
+      //   throw new BadRequestException('Email already exists');
+      // }
 
       const [customer, supabaseResponse] = await Promise.all([
         this.stripe.customers.create({ name, email }),
@@ -54,9 +54,7 @@ export class AuthService {
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       await User.create({
-        name,
-        email,
-        password: hashedPassword,
+        supabaseId:supabaseResponse.data.user?.id,
         stripeCustomerId: customer.id,
         planId: planId || null,
       });

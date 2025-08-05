@@ -1,0 +1,60 @@
+import {
+  Table,
+  Column,
+  Model,
+  PrimaryKey,
+  AutoIncrement,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  AllowNull,
+  Default,
+} from 'sequelize-typescript';
+import { User } from './user.model';
+import { Plan } from './plans.model';
+
+@Table({
+  tableName: 'subscriptions',
+  timestamps: true,
+})
+export class Subscription extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => User)
+  @AllowNull(false)
+  @Column(DataType.INTEGER)
+  declare userId: number;
+
+  @ForeignKey(() => Plan)
+  @AllowNull(false)
+  @Column(DataType.INTEGER)
+  declare planId: number;
+
+  @BelongsTo(() => User)
+  declare user: User;
+
+  @BelongsTo(() => Plan)
+  declare plan: Plan;
+
+  @Default('active')
+  @Column({
+    type: DataType.ENUM('active', 'cancelled', 'expired'),
+    allowNull: false,
+  })
+  declare status: 'active' | 'cancelled' | 'expired';
+
+  @AllowNull(false)
+  @Column(DataType.DATE)
+  declare subscribedAt: Date;
+
+  @AllowNull(false)
+  @Column(DataType.DATE)
+  declare expiresAt: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  declare stripeSessionId: string;
+}

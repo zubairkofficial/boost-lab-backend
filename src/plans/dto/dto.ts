@@ -1,14 +1,14 @@
+// dto.ts
 export class CreatePlanDto {
-    name: string;
-    price: number;
-    description: string;
-    features: string[];
-  }
-  
-  export class UpdatePlanDto {
-    name?: string;
-    price?: number;
-    description?: string;
-    features?: string[];
-  }
-  
+  name: string;
+  oldPrice: number;
+  price: number;
+  description?: string[];
+}
+
+export class UpdatePlanDto {
+  name?: string;
+  oldPrice?: number;
+  price?: number;
+  description?: string[];
+}

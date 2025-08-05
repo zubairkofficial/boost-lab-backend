@@ -23,33 +23,40 @@ export class User extends Model {
   })
   declare id: number;
 
-  @Column({ type: DataType.STRING, allowNull: false })
-  declare name: string;
-
   @Unique
-  @Column({ type: DataType.STRING, allowNull: false })
-  declare email: string;
+@Column({
+  type: DataType.STRING,
+  allowNull: true,
+})
+declare supabaseId: string;
 
-  @Column({ type: DataType.TEXT, allowNull: false })
-  declare password: string;
+  // @Column({ type: DataType.STRING, allowNull: false })
+  // declare name: string;
 
-  @Column({
-    type: DataType.ENUM('user', 'admin'),
-    allowNull: false,
-    defaultValue: 'user',
-  })
-  declare role: 'user' | 'admin';
+  // @Unique
+  // @Column({ type: DataType.STRING, allowNull: false })
+  // declare email: string;
 
-  @Default('pending')
-  @Column({
-    type: DataType.ENUM('pending', 'active'),
-    allowNull: false,
-  })
-  declare status: 'pending' | 'active';
+  // @Column({ type: DataType.TEXT, allowNull: false })
+  // declare password: string;
 
-  @AllowNull(true)
-  @Column(DataType.DATE)
-  declare resetTokenExpiry: Date | null;
+  // @Column({
+  //   type: DataType.ENUM('user', 'admin'),
+  //   allowNull: false,
+  //   defaultValue: 'user',
+  // })
+  // declare role: 'user' | 'admin';
+
+  // @Default('pending')
+  // @Column({
+  //   type: DataType.ENUM('pending', 'active'),
+  //   allowNull: false,
+  // })
+  // declare status: 'pending' | 'active';
+
+  // @AllowNull(true)
+  // @Column(DataType.DATE)
+  // declare resetTokenExpiry: Date | null;
 
   @AllowNull(true)
   @Column(DataType.STRING)

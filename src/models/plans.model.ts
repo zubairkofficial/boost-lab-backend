@@ -6,7 +6,6 @@ import {
   AutoIncrement,
   DataType,
   AllowNull,
-  BeforeCreate,
 } from 'sequelize-typescript';
 
 @Table({
@@ -31,14 +30,15 @@ export class Plan extends Model {
   })
   declare price: number;
 
-  @AllowNull(true)
-  @Column(DataType.TEXT)
-  declare description?: string;
+  @Column({
+    type: DataType.FLOAT,
+    allowNull: true,
+  })
+  declare oldPrice: number;
 
   @AllowNull(true)
   @Column(DataType.ARRAY(DataType.STRING))
-  declare features?: string[];
-
+  declare description?: string[];
 
   @AllowNull(true)
   @Column(DataType.STRING)
