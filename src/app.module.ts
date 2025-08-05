@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { User } from './models/user.model';
 import { PlansModule } from './plans/plans.module';
 import { TestResultModule } from './test-result/test-result.module';
+import { Plan } from './models/plans.model';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { TestResultModule } from './test-result/test-result.module';
     AuthModule,
     PlansModule,
     TestResultModule,
+    SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,6 +8,8 @@ import * as dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { User } from './../models/user.model';
 import Stripe from 'stripe';
+import { Plan } from 'src/models/plans.model';
+import { InjectModel } from '@nestjs/sequelize';
 
 dotenv.config();
 @Injectable()
@@ -15,7 +17,8 @@ export class AuthService {
   private supabase: SupabaseClient;
   private stripe: Stripe;
 
-  constructor() {
+  constructor(  @InjectModel(User)
+  private readonly userModel: typeof User,) {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_KEY!,
@@ -68,21 +71,38 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+ async login(email: string, password: string) {
+  const { data, error } = await this.supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    if (error) throw new UnauthorizedException(error.message);
+  if (error) throw new UnauthorizedException(error.message);
 
-    return {
-      message: 'Login successful',
-      access_token: data.session?.access_token,
-      refresh_token: data.session?.refresh_token,
-      user: data.user,
-    };
+  const supabaseId = data.user?.id;
+
+  if (!supabaseId) {
+    throw new UnauthorizedException('Invalid Supabase user ID');
   }
+
+  const user = await this.userModel.findOne({
+    where: { supabaseId },
+  });
+
+  if (!user) {
+    throw new UnauthorizedException('User not found in database');
+  }
+
+  return {
+    message: 'Login successful',
+    access_token: data.session?.access_token,
+    refresh_token: data.session?.refresh_token,
+    user:data.user,
+    userInfo:user
+    
+  };
+}
+
   async getUserFromToken(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
     if (error || !data.user)

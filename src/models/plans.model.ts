@@ -1,12 +1,4 @@
-import {
-  Table,
-  Column,
-  Model,
-  PrimaryKey,
-  AutoIncrement,
-  DataType,
-  AllowNull,
-} from 'sequelize-typescript';
+import { AllowNull, AutoIncrement, Column, DataType, HasMany, Model, PrimaryKey, Table } from 'sequelize-typescript';
 
 @Table({
   tableName: 'plans',
@@ -47,4 +39,6 @@ export class Plan extends Model {
   @AllowNull(false)
   @Column(DataType.DATE)
   declare validTill: Date;
+
+  
 }

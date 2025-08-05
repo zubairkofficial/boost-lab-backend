@@ -45,11 +45,11 @@ export class PlansController {
   }
   @Post('checkout-session')
   async createCheckoutSession(
-    @Body() body: { stripePriceId: string; userId: number },
+    @Body() body: { stripePriceId: string; id: number },
   ) {
     return this.planService.createCheckoutSession(
       body.stripePriceId,
-      body.userId,
+      body.id,
     );
   }
 
