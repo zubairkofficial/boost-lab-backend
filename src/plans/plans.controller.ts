@@ -6,9 +6,17 @@ import {
   Param,
   Patch,
   Delete,
+  Headers,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
+  apiVersion: '2025-06-30.basil',
+});
 
 @Controller('plans')
 export class PlansController {
@@ -43,6 +51,7 @@ export class PlansController {
   removeAll() {
     return this.planService.removeAll();
   }
+  
   @Post('checkout-session')
   async createCheckoutSession(
     @Body() body: { stripePriceId: string; id: number },
@@ -53,9 +62,47 @@ export class PlansController {
     );
   }
 
+  @Post('webhook')
+  async handleWebhook(
+    @Body() body: any,
+    @Headers('stripe-signature') signature: string,
+  ) {
+    try {
+      const event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET!,
+      );
+
+      switch (event.type) {
+        case 'checkout.session.completed':
+          const session = event.data.object as Stripe.Checkout.Session;
+          await this.planService.handleSuccessfulPayment(session);
+          break;
+        case 'customer.subscription.deleted':
+          const subscription = event.data.object as Stripe.Subscription;
+          await this.planService.handleSubscriptionCancelled(subscription);
+          break;
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
+      }
+
+      return { received: true };
+    } catch (err) {
+      console.error('Webhook error:', err);
+      throw new HttpException('Webhook error', HttpStatus.BAD_REQUEST);
+    }
+  }
+
   @Get('active-subscription/:userId')
   getActiveSubscription(@Param('userId') userId: number) {
     return this.planService.getActiveSubscription(userId);
+  }
+
+  @Get('verify-payment/:sessionId')
+  async verifyPayment(@Param('sessionId') sessionId: string) {
+    const isPaid = await this.planService.verifyPaymentSuccess(sessionId);
+    return { isPaid };
   }
 
   @Post('cancel-subscription/:userId')

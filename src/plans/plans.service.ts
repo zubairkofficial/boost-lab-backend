@@ -79,6 +79,10 @@ export class PlansService {
       throw new Error('stripePriceId and userId are required');
     }
 
+    // Get plan from DB first
+    const plan = await this.planModel.findOne({ where: { stripePriceId } });
+    if (!plan) throw new NotFoundException('Plan not found for Stripe ID');
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -88,27 +92,53 @@ export class PlansService {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.CLIENT_URL}/success`,
+      success_url: `${process.env.CLIENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/cancel`,
+      metadata: {
+        userId: userId.toString(),
+        planId: plan.id.toString(),
+      },
     });
 
-    // Get plan from DB
-    const plan = await this.planModel.findOne({ where: { stripePriceId } });
-    if (!plan) throw new NotFoundException('Plan not found for Stripe ID');
+    // Don't create subscription here - wait for webhook confirmation
+    return { url: session.url! };
+  }
+
+  async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
+    const { userId, planId } = session.metadata!;
+    
+    if (!userId || !planId) {
+      console.error('Missing metadata in session:', session.id);
+      return;
+    }
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days validity
 
-    await this.subscriptionModel.create({
-      userId,
-      planId: plan.id,
+    // Create or update subscription
+    await this.subscriptionModel.upsert({
+      userId: parseInt(userId),
+      planId: parseInt(planId),
       status: 'active',
       subscribedAt: now,
       expiresAt,
       stripeSessionId: session.id,
     });
 
-    return { url: session.url! };
+    console.log(`Subscription activated for user ${userId}, plan ${planId}`);
+  }
+
+  async handleSubscriptionCancelled(subscription: Stripe.Subscription) {
+    // Find subscription by Stripe subscription ID and mark as cancelled
+    const dbSubscription = await this.subscriptionModel.findOne({
+      where: { stripeSessionId: subscription.id },
+    });
+
+    if (dbSubscription) {
+      dbSubscription.status = 'cancelled';
+      await dbSubscription.save();
+      console.log(`Subscription cancelled for session ${subscription.id}`);
+    }
   }
 
   async getActiveSubscription(userId: number) {
@@ -139,5 +169,15 @@ export class PlansService {
       message: 'Subscription cancelled successfully',
       subscription,
     };
+  }
+
+  async verifyPaymentSuccess(sessionId: string) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      return session.payment_status === 'paid';
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      return false;
+    }
   }
 }
