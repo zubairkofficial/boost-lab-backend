@@ -9,10 +9,12 @@ import {
   Headers,
   HttpException,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
 import Stripe from 'stripe';
+import { Request } from 'express';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
   apiVersion: '2025-06-30.basil',
@@ -51,28 +53,41 @@ export class PlansController {
   removeAll() {
     return this.planService.removeAll();
   }
+  @Get('payment-history')
+  async getPaymentHistory() {
+    return this.planService.getPaymentHistory();
+  }
+  @Get('invoice-history')
+  async getInvoiceHistory() {
+    return this.planService.getInvoiceHistory();
+  }
   
+
   @Post('checkout-session')
   async createCheckoutSession(
     @Body() body: { stripePriceId: string; id: number },
   ) {
-    return this.planService.createCheckoutSession(
-      body.stripePriceId,
-      body.id,
-    );
+    return this.planService.createCheckoutSession(body.stripePriceId, body.id);
+  }
+  @Post('webhook/test')
+  async testWebhook(@Body() body: any) {
+    const session = body;
+    await this.planService.handleSuccessfulPayment(session);
+    return { message: 'Test webhook triggered', session };
   }
 
   @Post('webhook')
   async handleWebhook(
-    @Body() body: any,
+    @Req() req: Request,
     @Headers('stripe-signature') signature: string,
   ) {
     try {
       const event = stripe.webhooks.constructEvent(
-        body,
+        req.body,
         signature,
         process.env.STRIPE_WEBHOOK_SECRET!,
       );
+      console.log('✅ Webhook received:', event.type);
 
       switch (event.type) {
         case 'checkout.session.completed':
@@ -89,7 +104,7 @@ export class PlansController {
 
       return { received: true };
     } catch (err) {
-      console.error('Webhook error:', err);
+      console.error('❌ Webhook error:', err.message);
       throw new HttpException('Webhook error', HttpStatus.BAD_REQUEST);
     }
   }

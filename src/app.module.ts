@@ -8,7 +8,7 @@ import { User } from './models/user.model';
 import { PlansModule } from './plans/plans.module';
 import { TestResultModule } from './test-result/test-result.module';
 import { Plan } from './models/plans.model';
-import { SubscriptionModule } from './subscription/subscription.module';
+import { Subscription } from './models/subscription.model';
 
 @Module({
   imports: [
@@ -27,13 +27,13 @@ import { SubscriptionModule } from './subscription/subscription.module';
         database: configService.get<string>('DB_NAME'),
         autoLoadModels: true,
         synchronize: true,
-        models: [User],
+        models: [User, Plan, Subscription],
       }),
     }),
     AuthModule,
     PlansModule,
     TestResultModule,
-    SubscriptionModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],

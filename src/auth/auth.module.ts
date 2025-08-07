@@ -5,11 +5,11 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { User } from 'src/models/user.model';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy'; 
-import { Plan } from 'src/models/plans.model';
+
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([User,Plan]),
+    SequelizeModule.forFeature([User]),
     JwtModule.register({
       secret: 'sadam@1234',
       signOptions: { expiresIn: '1d' },

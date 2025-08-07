@@ -1,4 +1,18 @@
-import { AllowNull, BelongsTo, Column, DataType, ForeignKey, Model, PrimaryKey, Table, Unique } from 'sequelize-typescript';
+import {
+  AllowNull,
+  BelongsTo,
+  Column,
+  DataType,
+  ForeignKey,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+  Unique,
+} from 'sequelize-typescript';
+import { Plan } from './plans.model';
+import { Subscription } from './subscription.model';
+
 
 @Table({
   tableName: 'users',
@@ -13,17 +27,22 @@ export class User extends Model {
   declare id: number;
 
   @Unique
-  @Column({
-    type: DataType.STRING,
-    allowNull: true,
-  })
+  @AllowNull(true)
+  @Column(DataType.STRING)
   declare supabaseId: string;
 
   @AllowNull(true)
   @Column(DataType.STRING)
   declare stripeCustomerId: string | null;
 
- 
+  @ForeignKey(() => Plan)
+  @AllowNull(true)
+  @Column(DataType.INTEGER)
+  declare planId: number | null;
 
- 
+  @BelongsTo(() => Plan)
+  declare plan: Plan;
+
+  @HasMany(() => Subscription)
+  declare subscriptions: Subscription[];
 }

@@ -10,6 +10,7 @@ import { User } from './../models/user.model';
 import Stripe from 'stripe';
 import { Plan } from 'src/models/plans.model';
 import { InjectModel } from '@nestjs/sequelize';
+import { Subscription } from 'src/models/subscription.model';
 
 dotenv.config();
 @Injectable()
@@ -17,8 +18,10 @@ export class AuthService {
   private supabase: SupabaseClient;
   private stripe: Stripe;
 
-  constructor(  @InjectModel(User)
-  private readonly userModel: typeof User,) {
+  constructor(
+    @InjectModel(User)
+    private readonly userModel: typeof User,
+  ) {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_KEY!,
@@ -35,11 +38,6 @@ export class AuthService {
     planId?: number,
   ) {
     try {
-      // const existingUser = await User.findOne({ where: { email } });
-      // if (existingUser) {
-      //   throw new BadRequestException('Email already exists');
-      // }
-
       const [customer, supabaseResponse] = await Promise.all([
         this.stripe.customers.create({ name, email }),
         this.supabase.auth.signUp({
@@ -55,12 +53,24 @@ export class AuthService {
       if (supabaseResponse.error) {
         throw new BadRequestException(supabaseResponse.error.message);
       }
+
       const hashedPassword = await bcrypt.hash(password, 10);
-      await User.create({
-        supabaseId:supabaseResponse.data.user?.id,
+
+      const newUser = await User.create({
+        supabaseId: supabaseResponse.data.user?.id,
         stripeCustomerId: customer.id,
-        planId: planId || null,
+        planId: planId ?? null,
       });
+
+      if (planId) {
+        await Subscription.create({
+          userId: newUser.id,
+          planId,
+          status: 'active',
+          subscribedAt: new Date(),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        });
+      }
 
       return {
         message: 'Registration successful. Please check your email.',
@@ -71,37 +81,45 @@ export class AuthService {
     }
   }
 
- async login(email: string, password: string) {
-  const { data, error } = await this.supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  async login(email: string, password: string) {
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) throw new UnauthorizedException(error.message);
+    if (error) throw new UnauthorizedException(error.message);
 
-  const supabaseId = data.user?.id;
+    const supabaseId = data.user?.id;
 
-  if (!supabaseId) {
-    throw new UnauthorizedException('Invalid Supabase user ID');
+    if (!supabaseId) {
+      throw new UnauthorizedException('Invalid Supabase user ID');
+    }
+
+    const user = await this.userModel.findOne({
+      where: { supabaseId },
+      include: [
+        {
+          model: Subscription,
+          required: false,
+          where: { status: 'active' },
+          include: [Plan],
+        },
+        Plan, 
+      ],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found in database');
+    }
+
+    return {
+      message: 'Login successful',
+      access_token: data.session?.access_token,
+      refresh_token: data.session?.refresh_token,
+      user: data.user,
+      userInfo: user,
+    };
   }
-
-  const user = await this.userModel.findOne({
-    where: { supabaseId },
-  });
-
-  if (!user) {
-    throw new UnauthorizedException('User not found in database');
-  }
-
-  return {
-    message: 'Login successful',
-    access_token: data.session?.access_token,
-    refresh_token: data.session?.refresh_token,
-    user:data.user,
-    userInfo:user
-    
-  };
-}
 
   async getUserFromToken(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
@@ -110,7 +128,6 @@ export class AuthService {
     return data.user;
   }
 
-  /* Send password reset email */
   async sendResetLink(email: string) {
     const { data, error } = await this.supabase.auth.resetPasswordForEmail(
       email,
@@ -124,7 +141,6 @@ export class AuthService {
     return { message: 'Password reset email sent' };
   }
 
-  /* Reset password (user already verified via link) */
   async resetPassword(newPassword: string) {
     const {
       data: { user },
@@ -141,7 +157,6 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  /* Change password (user must be logged in) */
   async changePassword(token: string, newPassword: string) {
     const {
       data: { user },

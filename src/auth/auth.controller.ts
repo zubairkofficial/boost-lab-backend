@@ -49,7 +49,6 @@ export class AuthController {
     return this.authService.logout();
   }
 
-
   @Get('/me')
   async profile(@Headers('authorization') authHeader: string) {
     const token = authHeader?.replace('Bearer ', '');
@@ -76,6 +75,11 @@ export class AuthController {
   ) {
     const token = authHeader?.replace('Bearer ', '');
     return this.authService.changePassword(token, newPassword);
+  }
+  @Get('/verify')
+  verify(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.replace('Bearer ', '');
+    return this.authService.getUserFromToken(token);
   }
 
   /** ✅ Admin: Get all users */

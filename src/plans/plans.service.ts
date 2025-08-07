@@ -79,9 +79,16 @@ export class PlansService {
       throw new Error('stripePriceId and userId are required');
     }
 
-    // Get plan from DB first
     const plan = await this.planModel.findOne({ where: { stripePriceId } });
     if (!plan) throw new NotFoundException('Plan not found for Stripe ID');
+
+    const existingSubscription = await this.subscriptionModel.findOne({
+      where: { userId, status: 'active' },
+    });
+
+    if (existingSubscription) {
+      throw new Error('You already have an active subscription to this plan');
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -99,23 +106,19 @@ export class PlansService {
         planId: plan.id.toString(),
       },
     });
-
-    // Don't create subscription here - wait for webhook confirmation
     return { url: session.url! };
   }
-
   async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const { userId, planId } = session.metadata!;
-    
+
     if (!userId || !planId) {
-      console.error('Missing metadata in session:', session.id);
+      console.error('Missing metadata:', session.id);
       return;
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days validity
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // Create or update subscription
     await this.subscriptionModel.upsert({
       userId: parseInt(userId),
       planId: parseInt(planId),
@@ -125,11 +128,17 @@ export class PlansService {
       stripeSessionId: session.id,
     });
 
-    console.log(`Subscription activated for user ${userId}, plan ${planId}`);
+    await this.planModel.sequelize?.models.User.update(
+      { planId: parseInt(planId) },
+      { where: { id: parseInt(userId) } },
+    );
+
+    console.log(
+      `Subscription and user plan updated: user ${userId}, plan ${planId}`,
+    );
   }
 
   async handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-    // Find subscription by Stripe subscription ID and mark as cancelled
     const dbSubscription = await this.subscriptionModel.findOne({
       where: { stripeSessionId: subscription.id },
     });
@@ -144,7 +153,7 @@ export class PlansService {
   async getActiveSubscription(userId: number) {
     const subscription = await this.subscriptionModel.findOne({
       where: { userId, status: 'active' },
-      include: [Plan], 
+      include: [Plan],
     });
 
     if (!subscription) {
@@ -153,7 +162,6 @@ export class PlansService {
 
     return subscription;
   }
-
   async cancelUserSubscription(userId: number) {
     const subscription = await this.subscriptionModel.findOne({
       where: { userId, status: 'active' },
@@ -171,6 +179,98 @@ export class PlansService {
     };
   }
 
+  async getPaymentHistory(limit = 10) {
+    const charges = await stripe.charges.list({ limit });
+    const enriched = await Promise.all(
+      charges.data.map(async (charge) => {
+        let email: string | null = null;
+
+        if (charge.customer) {
+          const customer = await stripe.customers.retrieve(
+            charge.customer as string,
+          );
+          if (!('deleted' in customer)) {
+            email = customer.email;
+          }
+        }
+
+        const paymentMethod = charge.payment_method_details?.type ?? 'N/A';
+
+        return {
+          id: charge.id,
+          amount: charge.amount,
+          currency: charge.currency,
+          status: charge.status,
+          receiptUrl: charge.receipt_url,
+          createdAt: new Date(charge.created * 1000),
+          customer: charge.customer,
+          email,
+          paymentMethod,
+          description: charge.description,
+        };
+      }),
+    );
+
+    return enriched;
+  }
+  async getInvoiceHistory(limit = 10) {
+    const invoices = await stripe.invoices.list({
+      limit,
+      expand: ['data.payment_intent.payment_method'], // ✅ Expand deeper
+    });
+
+    const enriched = await Promise.all(
+      invoices.data.map(async (invoice) => {
+        let email: string | null = null;
+        let billingName: string | null = null;
+        let paymentMethod: string | null = 'N/A';
+
+        // Customer Info
+        if (typeof invoice.customer === 'string') {
+          try {
+            const customer = await stripe.customers.retrieve(invoice.customer);
+            if (!('deleted' in customer)) {
+              email = customer.email;
+              billingName = customer.name || null;
+            }
+          } catch (err) {
+            console.error(
+              `Error retrieving customer ${invoice.customer}:`,
+              err,
+            );
+          }
+        }
+        const intent = (invoice as any).payment_intent as Stripe.PaymentIntent;
+        if (
+          intent &&
+          typeof intent.payment_method === 'object' &&
+          intent.payment_method &&
+          'type' in intent.payment_method
+        ) {
+          paymentMethod = (intent.payment_method as Stripe.PaymentMethod).type;
+        }
+
+        return {
+          id: invoice.id,
+          number: invoice.number,
+          amountDue: invoice.amount_due,
+          amountPaid: invoice.amount_paid,
+          currency: invoice.currency,
+          status: invoice.status,
+          hostedInvoiceUrl: invoice.hosted_invoice_url,
+          invoicePdf: invoice.invoice_pdf,
+          createdAt: new Date(invoice.created * 1000),
+          email,
+          billingName,
+          paymentMethod,
+        };
+      }),
+    );
+
+    return enriched.sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    );
+  }
   async verifyPaymentSuccess(sessionId: string) {
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);

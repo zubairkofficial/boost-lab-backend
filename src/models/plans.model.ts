@@ -1,4 +1,13 @@
-import { AllowNull, AutoIncrement, Column, DataType, HasMany, Model, PrimaryKey, Table } from 'sequelize-typescript';
+import {
+  AllowNull,
+  AutoIncrement,
+  Column,
+  DataType,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+} from 'sequelize-typescript';
 
 @Table({
   tableName: 'plans',
@@ -15,6 +24,12 @@ export class Plan extends Model {
     allowNull: false,
   })
   declare name: string;
+  @AllowNull(false)
+  @Column({
+    type: DataType.STRING,
+    defaultValue: 'active',
+  })
+  declare status: string;
 
   @Column({
     type: DataType.FLOAT,
@@ -39,6 +54,4 @@ export class Plan extends Model {
   @AllowNull(false)
   @Column(DataType.DATE)
   declare validTill: Date;
-
-  
 }
