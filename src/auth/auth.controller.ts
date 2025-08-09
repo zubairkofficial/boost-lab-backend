@@ -10,30 +10,23 @@ import {
   UseGuards,
   Delete,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
-
   @Post('/register')
-  register(
-    @Body()
-    dto: {
-      name: string;
-      email: string;
-      password: string;
-      planId?: number;
-    },
+  async register(
+    @Query('email') email: string,
+    @Query('password') password: string,
   ) {
+    if (!email || !password) {
+      throw new BadRequestException('Email and password are required');
+    }
     try {
-      return this.authService.register(
-        dto.name,
-        dto.email,
-        dto.password,
-        dto.planId,
-      );
+      return await this.authService.register(email, password);
     } catch (error) {
       throw new BadRequestException(error.message);
     }

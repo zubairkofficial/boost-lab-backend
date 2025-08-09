@@ -11,6 +11,7 @@ import Stripe from 'stripe';
 import { Plan } from 'src/models/plans.model';
 import { InjectModel } from '@nestjs/sequelize';
 import { Subscription } from 'src/models/subscription.model';
+import * as jwt from 'jsonwebtoken';
 
 dotenv.config();
 @Injectable()
@@ -30,47 +31,21 @@ export class AuthService {
       apiVersion: '2025-06-30.basil',
     });
   }
-
-  async register(
-    name: string,
-    email: string,
-    password: string,
-    planId?: number,
-  ) {
+  async register(email: string, password: string) {
     try {
-      const [customer, supabaseResponse] = await Promise.all([
-        this.stripe.customers.create({ name, email }),
-        this.supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { name },
-            emailRedirectTo: `${process.env.VITE_BASE_URL}/auth/login`,
-          },
-        }),
-      ]);
+      const customer = await this.stripe.customers.create({ email });
+      const supabaseResponse = await this.supabase.auth.signUp({
+        email,
+        password,
+      });
 
       if (supabaseResponse.error) {
         throw new BadRequestException(supabaseResponse.error.message);
       }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
       const newUser = await User.create({
         supabaseId: supabaseResponse.data.user?.id,
         stripeCustomerId: customer.id,
-        planId: planId ?? null,
       });
-
-      if (planId) {
-        await Subscription.create({
-          userId: newUser.id,
-          planId,
-          status: 'active',
-          subscribedAt: new Date(),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        });
-      }
 
       return {
         message: 'Registration successful. Please check your email.',
@@ -104,7 +79,7 @@ export class AuthService {
           where: { status: 'active' },
           include: [Plan],
         },
-        Plan, 
+        Plan,
       ],
     });
 
