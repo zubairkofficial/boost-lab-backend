@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Redirect,
   UnauthorizedException,
 } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -47,53 +48,25 @@ export class AuthService {
         stripeCustomerId: customer.id,
       });
 
+      const signInResponse = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInResponse.error) {
+        throw new BadRequestException(signInResponse.error.message);
+      }
+
       return {
-        message: 'Registration successful. Please check your email.',
-        user: supabaseResponse.data.user,
+        message: 'Registration and login successful.',
+        user: signInResponse.data.user,
+        access_token: signInResponse.data.session?.access_token,
+        refresh_token: signInResponse.data.session?.refresh_token,
       };
+  
     } catch (error) {
       throw new BadRequestException(error.message);
     }
-  }
-
-  async login(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw new UnauthorizedException(error.message);
-
-    const supabaseId = data.user?.id;
-
-    if (!supabaseId) {
-      throw new UnauthorizedException('Invalid Supabase user ID');
-    }
-
-    const user = await this.userModel.findOne({
-      where: { supabaseId },
-      include: [
-        {
-          model: Subscription,
-          required: false,
-          where: { status: 'active' },
-          include: [Plan],
-        },
-        Plan,
-      ],
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found in database');
-    }
-
-    return {
-      message: 'Login successful',
-      access_token: data.session?.access_token,
-      refresh_token: data.session?.refresh_token,
-      user: data.user,
-      userInfo: user,
-    };
   }
 
   async getUserFromToken(token: string) {

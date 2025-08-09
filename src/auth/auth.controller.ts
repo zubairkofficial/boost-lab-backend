@@ -11,8 +11,10 @@ import {
   Delete,
   BadRequestException,
   Query,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -21,20 +23,18 @@ export class AuthController {
   async register(
     @Query('email') email: string,
     @Query('password') password: string,
+    @Res() res: Response,
   ) {
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }
     try {
-      return await this.authService.register(email, password);
+      await this.authService.register(email, password);
+      const frontendUrl = process.env.FRONTeEND_URL || 'http://localhost:3000/';
+      return res.redirect(frontendUrl);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
-  }
-
-  @Post('/login')
-  login(@Body() dto: { email: string; password: string }) {
-    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('logout')
