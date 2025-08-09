@@ -12,10 +12,10 @@ export class TestResultController {
     return this.testResultService.create(createTestResultDto);
   }
 
-  @Get()
-  findAll() {
-    return this.testResultService.findAll();
-  }
+  // @Get()
+  // findAll() {
+  //   return this.testResultService.findAll();
+  // }
 
   @Get(':email')
   getTestResult(@Param('email') email: string) {

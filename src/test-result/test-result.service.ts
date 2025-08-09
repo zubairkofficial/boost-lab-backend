@@ -16,9 +16,9 @@ export class TestResultService {
     return 'This action adds a new testResult';
   }
 
-  findAll() {
-    return `This action returns all testResult`;
-  }
+  // findAll() {
+  //   return `This action returns all testResult`;
+  // }
 
   async getTestResult(email:string) {
    try {
