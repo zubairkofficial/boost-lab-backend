@@ -31,7 +31,7 @@ export class AuthController {
     try {
       await this.authService.register(email, password);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
-      return res.redirect(`${frontendUrl}/personal-account-free`);
+      return res.redirect(frontendUrl);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
