@@ -23,21 +23,18 @@ export class AuthController {
   async register(
     @Query('email') email: string,
     @Query('password') password: string,
-    @Res() res: Response,
   ) {
-    if (!email || !password) {
+    if (!email || !password)
       throw new BadRequestException('Email and password are required');
-    }
-    try {
-      await this.authService.register(email, password);
-      const frontendUrl =
-        process.env.FRONTEND_URL ||
-        'https://app.boostlab.ph/personal-account-free';
-      return res.redirect(frontendUrl);
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+    const result = await this.authService.register(email, password);
+    return {
+      message: 'Registration and login successful',
+      user: result.user,
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    };
   }
+
   @Post('/login')
   async login(
     @Query('email') qEmail: string,
