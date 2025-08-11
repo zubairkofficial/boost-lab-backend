@@ -38,9 +38,13 @@ export class AuthController {
   }
   @Post('/login')
   async login(
-    @Query('email') email: string,
-    @Query('password') password: string,
+    @Query('email') qEmail: string,
+    @Query('password') qPassword: string,
+    @Body('email') bEmail: string,
+    @Body('password') bPassword: string,
   ) {
+    const email = qEmail || bEmail;
+    const password = qPassword || bPassword;
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }
