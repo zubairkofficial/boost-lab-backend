@@ -117,6 +117,7 @@ export class AuthService {
       user: signInResponse.data.user,
       access_token: signInResponse.data.session?.access_token,
       refresh_token: signInResponse.data.session?.refresh_token,
+
     };
   }
 
