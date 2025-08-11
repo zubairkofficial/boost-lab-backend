@@ -30,11 +30,21 @@ export class AuthController {
     }
     try {
       await this.authService.register(email, password);
-      const frontendUrl = process.env.FRONTeEND_URL || 'http://localhost:3000/';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000/';
       return res.redirect(frontendUrl);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
+  }
+  @Post('/login')
+  async login(
+    @Query('email') email: string,
+    @Query('password') password: string,
+  ) {
+    if (!email || !password) {
+      throw new BadRequestException('Email and password are required');
+    }
+    return this.authService.login(email, password);
   }
 
   @Post('logout')
@@ -91,11 +101,5 @@ export class AuthController {
   @Delete('/users/:userId')
   deleteUser(@Param('userId') userId: string) {
     return this.authService.deleteUser(userId);
-  }
-
-  /** ✅ Resend confirmation email */
-  @Post('/resend-confirmation')
-  resendConfirmationEmail(@Body('email') email: string) {
-    return this.authService.resendConfirmationEmail(email);
   }
 }

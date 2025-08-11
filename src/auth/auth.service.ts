@@ -34,28 +34,57 @@ export class AuthService {
   }
   async register(email: string, password: string) {
     try {
+      console.log('📩 Received register request:', {
+        email,
+        password,
+      });
+
+      // Create Stripe customer
+      console.log('🛠 Creating Stripe customer...');
       const customer = await this.stripe.customers.create({ email });
+      console.log('✅ Stripe customer created:', customer.id);
+
+      // Sign up in Supabase
+      console.log('🛠 Signing up user in Supabase...');
       const supabaseResponse = await this.supabase.auth.signUp({
         email,
         password,
       });
+      console.log('📦 Supabase signUp response:', supabaseResponse);
 
       if (supabaseResponse.error) {
+        console.error(
+          '❌ Supabase signUp error:',
+          supabaseResponse.error.message,
+        );
         throw new BadRequestException(supabaseResponse.error.message);
       }
+
+      // Save in your DB
+      console.log('🛠 Creating local DB user record...');
       const newUser = await User.create({
         supabaseId: supabaseResponse.data.user?.id,
         stripeCustomerId: customer.id,
       });
+      console.log('✅ Local DB user created:', newUser);
 
+      // Sign in after registration
+      console.log('🛠 Signing in newly registered user...');
       const signInResponse = await this.supabase.auth.signInWithPassword({
         email,
         password,
       });
+      console.log('📦 Supabase signIn response:', signInResponse);
 
       if (signInResponse.error) {
+        console.error(
+          '❌ Supabase signIn error:',
+          signInResponse.error.message,
+        );
         throw new BadRequestException(signInResponse.error.message);
       }
+
+      console.log('🎉 Registration and login successful for:', email);
 
       return {
         message: 'Registration and login successful.',
@@ -63,10 +92,32 @@ export class AuthService {
         access_token: signInResponse.data.session?.access_token,
         refresh_token: signInResponse.data.session?.refresh_token,
       };
-  
     } catch (error) {
+      console.error('🚨 register() failed:', error.message);
       throw new BadRequestException(error.message);
     }
+  }
+
+  async login(email: string, password: string) {
+    console.log('🔑 Login attempt:', { email });
+
+    const signInResponse = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    console.log('📦 Supabase signIn response:', signInResponse);
+
+    if (signInResponse.error) {
+      throw new BadRequestException(signInResponse.error.message);
+    }
+
+    return {
+      message: 'Login successful.',
+      user: signInResponse.data.user,
+      access_token: signInResponse.data.session?.access_token,
+      refresh_token: signInResponse.data.session?.refresh_token,
+    };
   }
 
   async getUserFromToken(token: string) {
@@ -146,21 +197,6 @@ export class AuthService {
     );
     if (error) throw new BadRequestException(error.message);
     return { message: 'User updated successfully', data };
-  }
-
-  /* Resend confirmation email */
-  async resendConfirmationEmail(email: string) {
-    const { data, error } = await this.supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${process.env.VITE_BASE_URL}/auth/login`,
-      },
-    });
-
-    if (error) throw new BadRequestException(error.message);
-
-    return { message: 'Confirmation email sent successfully' };
   }
 
   async logout(): Promise<{ message: string }> {
