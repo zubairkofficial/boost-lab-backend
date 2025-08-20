@@ -23,7 +23,7 @@ export class Subscription extends Model {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Column(DataType.UUID)
-  declare userId: string; 
+  declare userId: string;
 
   @ForeignKey(() => Plan)
   @AllowNull(false)
@@ -35,6 +35,9 @@ export class Subscription extends Model {
 
   @BelongsTo(() => Plan)
   declare plan: Plan;
+
+  @Column({ defaultValue: false })
+  autoRenew: boolean;
 
   @Default('active')
   @Column({
@@ -51,4 +54,3 @@ export class Subscription extends Model {
   @Column(DataType.DATE)
   declare expiresAt: Date;
 }
-

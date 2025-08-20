@@ -5,11 +5,13 @@ import { Plan } from '../models/plans.model';
 import { Subscription } from '../models/subscription.model';
 import { PlansController } from './plans.controller';
 import { PlansService } from './plans.service';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
-    ConfigModule, 
+    ConfigModule,
     SequelizeModule.forFeature([Plan, Subscription]),
+    ScheduleModule.forRoot(), 
   ],
   controllers: [PlansController],
   providers: [PlansService],

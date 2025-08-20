@@ -9,6 +9,7 @@ import { Plan } from './models/plans.model';
 import { Subscription } from './models/subscription.model';
 import { QuizModule } from './quiz/quiz.module';
 import { User } from './models/user.model';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { User } from './models/user.model';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        dialect: configService.get<'postgres'>('DB_DIALECT'), 
+        dialect: configService.get<'postgres'>('DB_DIALECT'),
         host: configService.get<string>('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
         username: configService.get<string>('DB_USERNAME'),
@@ -34,6 +35,7 @@ import { User } from './models/user.model';
     PlansModule,
     TestResultModule,
     QuizModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],

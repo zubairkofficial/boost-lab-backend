@@ -1,5 +1,3 @@
-// src/plans/plans.service.ts
-
 import {
   HttpException,
   HttpStatus,
@@ -9,9 +7,11 @@ import {
 import { InjectModel } from '@nestjs/sequelize';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { Cron, Interval } from '@nestjs/schedule';
 import { Plan } from './../models/plans.model';
 import { Subscription } from '../models/subscription.model';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
+import { Op } from 'sequelize';
 
 @Injectable()
 export class PlansService {
@@ -92,6 +92,7 @@ export class PlansService {
   async createCheckoutSession(
     stripePriceId: string,
     userId: number,
+    autoRenew: boolean,
   ): Promise<{ url: string }> {
     if (!stripePriceId || !userId) {
       throw new Error('stripePriceId and userId are required');
@@ -126,6 +127,7 @@ export class PlansService {
       metadata: {
         userId: userId.toString(),
         planId: plan.id.toString(),
+        autoRenew: autoRenew.toString(),
       },
     });
 
@@ -133,8 +135,7 @@ export class PlansService {
   }
 
   async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
-    const { userId, planId } = session.metadata!;
-
+    const { userId, planId, autoRenew } = session.metadata!;
     if (!userId || !planId) {
       console.error('Missing metadata:', session.id);
       return;
@@ -150,6 +151,7 @@ export class PlansService {
       subscribedAt: now,
       expiresAt,
       stripeSessionId: session.id,
+      autoRenew: autoRenew === 'true',
     });
 
     await this.planModel.sequelize?.models.User.update(
@@ -158,7 +160,7 @@ export class PlansService {
     );
 
     console.log(
-      `Subscription and user plan updated: user ${userId}, plan ${planId}`,
+      `Subscription and user plan updated: user ${userId}, plan ${planId}, autoRenew: ${autoRenew}`,
     );
   }
 
@@ -169,6 +171,7 @@ export class PlansService {
 
     if (dbSubscription) {
       dbSubscription.status = 'cancelled';
+      dbSubscription.autoRenew = false;
       await dbSubscription.save();
       console.log(`Subscription cancelled for session ${subscription.id}`);
     }
@@ -184,7 +187,71 @@ export class PlansService {
       throw new NotFoundException('No active subscription found');
     }
 
+    const now = new Date();
+    if (subscription.expiresAt <= now) {
+      if (subscription.autoRenew) {
+        await this.renewSubscription(subscription);
+        return this.getActiveSubscription(userId);
+      } else {
+        subscription.status = 'cancelled';
+        subscription.autoRenew = false;
+        await subscription.save();
+        throw new NotFoundException('No active subscription found (expired)');
+      }
+    }
+
     return subscription;
+  }
+
+  async renewSubscription(subscription: Subscription) {
+    const plan = await this.planModel.findByPk(subscription.planId);
+    if (!plan) return;
+
+    const session = await this.stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      success_url: `${process.env.PAYMENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.PAYMENT_URL}/cancel`,
+      metadata: {
+        userId: subscription.userId.toString(),
+        planId: plan.id.toString(),
+        autoRenew: 'true',
+      },
+    });
+
+    console.log(`Auto-renew session created: ${session.id}`);
+    const currentExpiry = subscription.expiresAt || new Date();
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setMonth(newExpiry.getMonth() + plan.duration);
+
+    subscription.expiresAt = newExpiry;
+    await subscription.save();
+
+    console.log(
+      `❤️ Subscription updated for user ${subscription.userId} with new expiry ${subscription.expiresAt}`,
+    );
+  }
+
+  @Interval(10000)
+  async handleInterval() {
+    console.log('🤌 Checking for expired subscriptions every 10 seconds');
+    await this.autoRenewExpiredSubscriptions();
+  }
+  async autoRenewExpiredSubscriptions() {
+    const now = new Date();
+    const expiredSubscriptions = await this.subscriptionModel.findAll({
+      where: {
+        status: 'active',
+        expiresAt: { [Op.lte]: now },
+        autoRenew: true,
+      },
+    });
+
+    for (const sub of expiredSubscriptions) {
+      await this.renewSubscription(sub);
+      console.log(`Auto-renew triggered for subscription: ${sub.id}`);
+    }
   }
 
   async cancelUserSubscription(userId: number) {
@@ -196,6 +263,7 @@ export class PlansService {
       throw new NotFoundException('Active subscription not found');
 
     subscription.status = 'cancelled';
+    subscription.autoRenew = false;
     await subscription.save();
 
     return {
@@ -203,41 +271,6 @@ export class PlansService {
       subscription,
     };
   }
-
-  // async getPaymentHistory(userId: number, limit = 10) {
-  //   const charges = await this.stripe.charges.list({ limit });
-  //   const userCharges = charges.data.filter(
-  //     (charge) =>
-  //       charge.metadata?.userId && charge.metadata.userId == userId.toString(),
-  //   );
-  //   const enriched = await Promise.all(
-  //     userCharges.map(async (charge) => {
-  //       let email: string | null = null;
-  //       if (charge.customer) {
-  //         const customer = await this.stripe.customers.retrieve(
-  //           charge.customer as string,
-  //         );
-  //         if (!('deleted' in customer)) email = customer.email;
-  //       }
-
-  //       const paymentMethod = charge.payment_method_details?.type ?? 'N/A';
-
-  //       return {
-  //         id: charge.id,
-  //         amount: charge.amount,
-  //         currency: charge.currency,
-  //         status: charge.status,
-  //         receiptUrl: charge.receipt_url,
-  //         createdAt: new Date(charge.created * 1000),
-  //         email,
-  //         paymentMethod,
-  //         description: charge.description,
-  //       };
-  //     }),
-  //   );
-
-  //   return enriched;
-  // }
 
   async getInvoiceHistory(limit = 10) {
     const invoices = await this.stripe.invoices.list({

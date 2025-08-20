@@ -6,11 +6,10 @@ import {
   Param,
   Patch,
   Delete,
-  Headers,
-  HttpException,
-  HttpStatus,
   Req,
   Res,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
@@ -55,12 +54,6 @@ export class PlansController {
     return this.planService.removeAll();
   }
 
-  // @Get('payment-history')
-  // async getPaymentHistory(@Req() req) {
-  //   const userId = req.user?.id;
-  //   return this.planService.getPaymentHistory(userId);
-  // }
-
   @Get('invoice-history')
   async getInvoiceHistory() {
     return this.planService.getInvoiceHistory();
@@ -68,19 +61,21 @@ export class PlansController {
 
   @Post('checkout-session')
   async createCheckoutSession(
-    @Body() body: { stripePriceId: string; id: number },
+    @Body() body: { stripePriceId: string; id: number; autoRenew?: boolean },
   ) {
-    return this.planService.createCheckoutSession(body.stripePriceId, body.id);
+    return this.planService.createCheckoutSession(
+      body.stripePriceId,
+      body.id,
+      body.autoRenew ?? false,
+    );
   }
 
-  // Test webhook endpoint
   @Post('webhook/test')
   async testWebhook(@Body() body: any) {
     await this.planService.handleSuccessfulPayment(body);
     return { message: 'Test webhook triggered', session: body };
   }
 
-  // Actual Stripe webhook endpoint
   @Post('webhook')
   async handleWebhook(@Req() req: Request, @Res() res: Response) {
     const signature = req.headers['stripe-signature'] as string;
