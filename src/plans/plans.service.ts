@@ -1,6 +1,11 @@
 // src/plans/plans.service.ts
 
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
@@ -199,40 +204,40 @@ export class PlansService {
     };
   }
 
-  async getPaymentHistory(userId: number, limit = 10) {
-    const charges = await this.stripe.charges.list({ limit });
-    const userCharges = charges.data.filter(
-      (charge) => charge.metadata?.userId === userId.toString(),
-    );
+  // async getPaymentHistory(userId: number, limit = 10) {
+  //   const charges = await this.stripe.charges.list({ limit });
+  //   const userCharges = charges.data.filter(
+  //     (charge) =>
+  //       charge.metadata?.userId && charge.metadata.userId == userId.toString(),
+  //   );
+  //   const enriched = await Promise.all(
+  //     userCharges.map(async (charge) => {
+  //       let email: string | null = null;
+  //       if (charge.customer) {
+  //         const customer = await this.stripe.customers.retrieve(
+  //           charge.customer as string,
+  //         );
+  //         if (!('deleted' in customer)) email = customer.email;
+  //       }
 
-    const enriched = await Promise.all(
-      userCharges.map(async (charge) => {
-        let email: string | null = null;
-        if (charge.customer) {
-          const customer = await this.stripe.customers.retrieve(
-            charge.customer as string,
-          );
-          if (!('deleted' in customer)) email = customer.email;
-        }
+  //       const paymentMethod = charge.payment_method_details?.type ?? 'N/A';
 
-        const paymentMethod = charge.payment_method_details?.type ?? 'N/A';
+  //       return {
+  //         id: charge.id,
+  //         amount: charge.amount,
+  //         currency: charge.currency,
+  //         status: charge.status,
+  //         receiptUrl: charge.receipt_url,
+  //         createdAt: new Date(charge.created * 1000),
+  //         email,
+  //         paymentMethod,
+  //         description: charge.description,
+  //       };
+  //     }),
+  //   );
 
-        return {
-          id: charge.id,
-          amount: charge.amount,
-          currency: charge.currency,
-          status: charge.status,
-          receiptUrl: charge.receipt_url,
-          createdAt: new Date(charge.created * 1000),
-          email,
-          paymentMethod,
-          description: charge.description,
-        };
-      }),
-    );
-
-    return enriched;
-  }
+  //   return enriched;
+  // }
 
   async getInvoiceHistory(limit = 10) {
     const invoices = await this.stripe.invoices.list({

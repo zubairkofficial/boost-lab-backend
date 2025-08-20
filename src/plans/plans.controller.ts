@@ -55,11 +55,11 @@ export class PlansController {
     return this.planService.removeAll();
   }
 
-  @Get('payment-history')
-  async getPaymentHistory(@Req() req) {
-    const userId = req.user.id;
-    return this.planService.getPaymentHistory(userId);
-  }
+  // @Get('payment-history')
+  // async getPaymentHistory(@Req() req) {
+  //   const userId = req.user?.id;
+  //   return this.planService.getPaymentHistory(userId);
+  // }
 
   @Get('invoice-history')
   async getInvoiceHistory() {
