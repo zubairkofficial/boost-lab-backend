@@ -1,12 +1,15 @@
 import {
-  AllowNull,
+  Table,
   Column,
-  DataType,
   Model,
   PrimaryKey,
-  Table,
+  AutoIncrement,
   Unique,
+  DataType,
+  AllowNull,
+  HasMany,
 } from 'sequelize-typescript';
+import { Subscription } from './subscription.model';
 
 @Table({
   tableName: 'users',
@@ -14,18 +17,35 @@ import {
 })
 export class User extends Model {
   @PrimaryKey
-  @Column({
-    type: DataType.INTEGER,
-    autoIncrement: true,
-  })
+  @AutoIncrement
+  @Column(DataType.INTEGER)
   declare id: number;
 
   @Unique
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.STRING)
-  declare supabaseId: string;
+  email!: string;
 
   @AllowNull(true)
   @Column(DataType.STRING)
-  declare stripeCustomerId: string | null;
+  name!: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  password!: string;
+
+  @AllowNull(true)
+  @Column({ field: 'stripe_customer_id', type: DataType.STRING })
+  stripeCustomerId!: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  declare createdAt: Date;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  declare updatedAt: Date;
+
+  @HasMany(() => Subscription)
+  declare subscriptions: Subscription[];
 }

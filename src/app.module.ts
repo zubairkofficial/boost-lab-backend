@@ -3,12 +3,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { User } from './models/user.model';
 import { PlansModule } from './plans/plans.module';
 import { TestResultModule } from './test-result/test-result.module';
 import { Plan } from './models/plans.model';
 import { Subscription } from './models/subscription.model';
+import { QuizModule } from './quiz/quiz.module';
+import { User } from './models/user.model';
 
 @Module({
   imports: [
@@ -19,7 +19,7 @@ import { Subscription } from './models/subscription.model';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        dialect: configService.get<'postgres'>('DB_DIALECT'),
+        dialect: configService.get<'postgres'>('DB_DIALECT'), 
         host: configService.get<string>('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
         username: configService.get<string>('DB_USERNAME'),
@@ -30,10 +30,10 @@ import { Subscription } from './models/subscription.model';
         models: [User, Plan, Subscription],
       }),
     }),
-    AuthModule,
+
     PlansModule,
     TestResultModule,
-    
+    QuizModule,
   ],
   controllers: [AppController],
   providers: [AppService],

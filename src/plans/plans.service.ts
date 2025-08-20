@@ -1,48 +1,61 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
-import { Plan } from './../models/plans.model';
-import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
-import Stripe from 'stripe';
-import { Subscription } from '../models/subscription.model';
+// src/plans/plans.service.ts
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2025-06-30.basil',
-});
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
+import { Plan } from './../models/plans.model';
+import { Subscription } from '../models/subscription.model';
+import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
 
 @Injectable()
 export class PlansService {
+  private stripe: Stripe;
+
   constructor(
+    private readonly configService: ConfigService,
     @InjectModel(Plan)
     private readonly planModel: typeof Plan,
     @InjectModel(Subscription)
     private readonly subscriptionModel: typeof Subscription,
-  ) {}
+  ) {
+    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
+    }
+
+    this.stripe = new Stripe(secretKey, {
+      apiVersion: '2025-06-30.basil',
+    });
+  }
 
   async create(dto: CreatePlanDto): Promise<Plan> {
-    const product = await stripe.products.create({
+    const product = await this.stripe.products.create({
       name: dto.name,
       description: Array.isArray(dto.description)
         ? dto.description.join(' | ')
         : dto.description,
     });
 
-    const price = await stripe.prices.create({
+    const price = await this.stripe.prices.create({
       unit_amount: Math.round(dto.price * 100),
       currency: 'usd',
-      recurring: { interval: 'month' },
+      recurring: {
+        interval: 'month',
+        interval_count: dto.duration,
+      },
       product: product.id,
     });
 
     const now = new Date();
-    const validTill = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const validTill = new Date(now.setMonth(now.getMonth() + dto.duration));
 
-    const newPlan = await this.planModel.create({
+    return this.planModel.create({
       ...dto,
       stripePriceId: price.id,
       validTill,
+      duration: dto.duration,
     });
-
-    return newPlan;
   }
 
   async findAll(): Promise<Plan[]> {
@@ -87,10 +100,13 @@ export class PlansService {
     });
 
     if (existingSubscription) {
-      throw new Error('You already have an active subscription to this plan');
+      throw new HttpException(
+        'You already have an active subscription. Please cancel it before subscribing to a new plan.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
@@ -99,15 +115,18 @@ export class PlansService {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.CLIENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/cancel`,
+
+      success_url: `${process.env.PAYMENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.PAYMENT_URL}/cancel`,
       metadata: {
         userId: userId.toString(),
         planId: plan.id.toString(),
       },
     });
+
     return { url: session.url! };
   }
+
   async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const { userId, planId } = session.metadata!;
 
@@ -162,6 +181,7 @@ export class PlansService {
 
     return subscription;
   }
+
   async cancelUserSubscription(userId: number) {
     const subscription = await this.subscriptionModel.findOne({
       where: { userId, status: 'active' },
@@ -179,19 +199,20 @@ export class PlansService {
     };
   }
 
-  async getPaymentHistory(limit = 10) {
-    const charges = await stripe.charges.list({ limit });
-    const enriched = await Promise.all(
-      charges.data.map(async (charge) => {
-        let email: string | null = null;
+  async getPaymentHistory(userId: number, limit = 10) {
+    const charges = await this.stripe.charges.list({ limit });
+    const userCharges = charges.data.filter(
+      (charge) => charge.metadata?.userId === userId.toString(),
+    );
 
+    const enriched = await Promise.all(
+      userCharges.map(async (charge) => {
+        let email: string | null = null;
         if (charge.customer) {
-          const customer = await stripe.customers.retrieve(
+          const customer = await this.stripe.customers.retrieve(
             charge.customer as string,
           );
-          if (!('deleted' in customer)) {
-            email = customer.email;
-          }
+          if (!('deleted' in customer)) email = customer.email;
         }
 
         const paymentMethod = charge.payment_method_details?.type ?? 'N/A';
@@ -203,7 +224,6 @@ export class PlansService {
           status: charge.status,
           receiptUrl: charge.receipt_url,
           createdAt: new Date(charge.created * 1000),
-          customer: charge.customer,
           email,
           paymentMethod,
           description: charge.description,
@@ -213,10 +233,11 @@ export class PlansService {
 
     return enriched;
   }
+
   async getInvoiceHistory(limit = 10) {
-    const invoices = await stripe.invoices.list({
+    const invoices = await this.stripe.invoices.list({
       limit,
-      expand: ['data.payment_intent.payment_method'], // ✅ Expand deeper
+      expand: ['data.payment_intent.payment_method'],
     });
 
     const enriched = await Promise.all(
@@ -225,10 +246,11 @@ export class PlansService {
         let billingName: string | null = null;
         let paymentMethod: string | null = 'N/A';
 
-        // Customer Info
         if (typeof invoice.customer === 'string') {
           try {
-            const customer = await stripe.customers.retrieve(invoice.customer);
+            const customer = await this.stripe.customers.retrieve(
+              invoice.customer,
+            );
             if (!('deleted' in customer)) {
               email = customer.email;
               billingName = customer.name || null;
@@ -240,6 +262,7 @@ export class PlansService {
             );
           }
         }
+
         const intent = (invoice as any).payment_intent as Stripe.PaymentIntent;
         if (
           intent &&
@@ -271,9 +294,10 @@ export class PlansService {
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
     );
   }
+
   async verifyPaymentSuccess(sessionId: string) {
     try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const session = await this.stripe.checkout.sessions.retrieve(sessionId);
       return session.payment_status === 'paid';
     } catch (error) {
       console.error('Error verifying payment:', error);

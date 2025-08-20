@@ -10,14 +10,15 @@ import {
   HttpException,
   HttpStatus,
   Req,
+  Res,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
 import Stripe from 'stripe';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2025-06-30.basil',
+  apiVersion: '2025-06-30' as any,
 });
 
 @Controller('plans')
@@ -53,15 +54,17 @@ export class PlansController {
   removeAll() {
     return this.planService.removeAll();
   }
+
   @Get('payment-history')
-  async getPaymentHistory() {
-    return this.planService.getPaymentHistory();
+  async getPaymentHistory(@Req() req) {
+    const userId = req.user.id;
+    return this.planService.getPaymentHistory(userId);
   }
+
   @Get('invoice-history')
   async getInvoiceHistory() {
     return this.planService.getInvoiceHistory();
   }
-  
 
   @Post('checkout-session')
   async createCheckoutSession(
@@ -69,20 +72,22 @@ export class PlansController {
   ) {
     return this.planService.createCheckoutSession(body.stripePriceId, body.id);
   }
+
+  // Test webhook endpoint
   @Post('webhook/test')
   async testWebhook(@Body() body: any) {
-    const session = body;
-    await this.planService.handleSuccessfulPayment(session);
-    return { message: 'Test webhook triggered', session };
+    await this.planService.handleSuccessfulPayment(body);
+    return { message: 'Test webhook triggered', session: body };
   }
 
+  // Actual Stripe webhook endpoint
   @Post('webhook')
-  async handleWebhook(
-    @Req() req: Request,
-    @Headers('stripe-signature') signature: string,
-  ) {
+  async handleWebhook(@Req() req: Request, @Res() res: Response) {
+    const signature = req.headers['stripe-signature'] as string;
+    let event: Stripe.Event;
+
     try {
-      const event = stripe.webhooks.constructEvent(
+      event = stripe.webhooks.constructEvent(
         req.body,
         signature,
         process.env.STRIPE_WEBHOOK_SECRET!,
@@ -94,18 +99,20 @@ export class PlansController {
           const session = event.data.object as Stripe.Checkout.Session;
           await this.planService.handleSuccessfulPayment(session);
           break;
+
         case 'customer.subscription.deleted':
           const subscription = event.data.object as Stripe.Subscription;
           await this.planService.handleSubscriptionCancelled(subscription);
           break;
+
         default:
           console.log(`Unhandled event type: ${event.type}`);
       }
 
-      return { received: true };
-    } catch (err) {
+      return res.json({ received: true });
+    } catch (err: any) {
       console.error('❌ Webhook error:', err.message);
-      throw new HttpException('Webhook error', HttpStatus.BAD_REQUEST);
+      return res.status(400).send(`Webhook error: ${err.message}`);
     }
   }
 

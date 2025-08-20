@@ -10,13 +10,10 @@ import {
   AllowNull,
   Default,
 } from 'sequelize-typescript';
-import { User } from './user.model';
 import { Plan } from './plans.model';
+import { User } from './user.model';
 
-@Table({
-  tableName: 'subscriptions',
-  timestamps: true,
-})
+@Table({ tableName: 'subscriptions', timestamps: true })
 export class Subscription extends Model {
   @PrimaryKey
   @AutoIncrement
@@ -25,8 +22,8 @@ export class Subscription extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.INTEGER)
-  declare userId: number;
+  @Column(DataType.UUID)
+  declare userId: string; 
 
   @ForeignKey(() => Plan)
   @AllowNull(false)
@@ -53,8 +50,5 @@ export class Subscription extends Model {
   @AllowNull(false)
   @Column(DataType.DATE)
   declare expiresAt: Date;
-
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  declare stripeSessionId: string;
 }
+

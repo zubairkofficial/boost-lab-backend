@@ -1,13 +1,20 @@
+import { Subscription } from './subscription.model';
 import {
-  AllowNull,
-  AutoIncrement,
+  Table,
   Column,
-  DataType,
-  HasMany,
   Model,
   PrimaryKey,
-  Table,
+  AutoIncrement,
+  DataType,
+  AllowNull,
+  HasMany,
 } from 'sequelize-typescript';
+
+export enum PlanDuration {
+  ONE_MONTH = 1,
+  THREE_MONTHS = 3,
+  TWELVE_MONTHS = 12,
+}
 
 @Table({
   tableName: 'plans',
@@ -19,39 +26,33 @@ export class Plan extends Model {
   @Column(DataType.INTEGER)
   declare id: number;
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-  })
-  declare name: string;
   @AllowNull(false)
-  @Column({
-    type: DataType.STRING,
-    defaultValue: 'active',
-  })
-  declare status: string;
+  @Column(DataType.STRING)
+  declare name: string;
 
-  @Column({
-    type: DataType.FLOAT,
-    allowNull: false,
-  })
+  @AllowNull(false)
+  @Column(DataType.FLOAT)
   declare price: number;
 
-  @Column({
-    type: DataType.FLOAT,
-    allowNull: true,
-  })
-  declare oldPrice: number;
+  @Column({ allowNull: true })
+  declare stripePriceId?: string;
+
+  @AllowNull(true)
+  @Column(DataType.FLOAT)
+  declare oldPrice?: number;
 
   @AllowNull(true)
   @Column(DataType.ARRAY(DataType.STRING))
   declare description?: string[];
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  declare stripePriceId?: string;
+  @AllowNull(false)
+  @Column(DataType.INTEGER)
+  declare duration: PlanDuration;
 
   @AllowNull(false)
   @Column(DataType.DATE)
   declare validTill: Date;
+
+  @HasMany(() => Subscription)
+  declare subscriptions: Subscription[];
 }
