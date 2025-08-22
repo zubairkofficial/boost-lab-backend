@@ -10,6 +10,7 @@ import { Subscription } from './models/subscription.model';
 import { QuizModule } from './quiz/quiz.module';
 import { User } from './models/user.model';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AgentsModule } from './agents/agents.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     TestResultModule,
     QuizModule,
     ScheduleModule.forRoot(),
+    AgentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

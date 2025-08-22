@@ -20,8 +20,6 @@ export class QuizService {
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    console.log('Initializing QuizService...');
-
     this.supabase = createClient(
       this.config.get<string>('SUPABASE_URL')!,
       this.config.get<string>('SUPABASE_KEY')!,
@@ -72,13 +70,23 @@ export class QuizService {
       throw new BadRequestException('Email already exists');
     }
 
-    // Run hashing + stripe in parallel
+    // Sign up user with Supabase Auth
+    const { data: authData, error: authError } =
+      await this.supabase.auth.signUp({
+        email,
+        password,
+      });
+    if (authError) throw new BadRequestException(authError.message);
+
+    const authUser = authData.user;
+    if (!authUser) throw new BadRequestException('Unable to create user');
+
+    // Hash password and create Stripe customer in parallel
     const [hashedPassword, stripeCustomer] = await Promise.all([
       bcrypt.hash(password, 8),
       this.stripe.customers.create({ email, name }),
     ]);
 
-    // Insert user
     const { data: userData, error: userErr } = await this.supabase
       .from('users')
       .insert([
@@ -87,6 +95,7 @@ export class QuizService {
           email,
           password: hashedPassword,
           stripe_customer_id: stripeCustomer.id,
+          auth_uid: authUser.id,
         },
       ])
       .select();
@@ -101,10 +110,9 @@ export class QuizService {
       stripe_customer_id: stripeCustomer.id,
     });
 
-    // ✅ Trigger heavy tasks in background (non-blocking)
+    // Trigger background tasks (OpenAI + email)
     this.handleBackgroundTasks(userId, name, email, answers);
 
-    // Return immediate response
     return {
       message: 'Submitted successfully. Your report will be ready soon.',
       token,
@@ -131,7 +139,6 @@ export class QuizService {
         .map((a) => `${a.question}: ${a.choice}`)
         .join('\n');
 
-      // Call OpenAI
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o',
         temperature: 0.3,
@@ -143,7 +150,6 @@ export class QuizService {
 
       const htmlReport = completion.choices?.[0]?.message?.content || '';
 
-      // Save report in messages table
       const { error: msgErr } = await this.supabase.from('messages').insert([
         {
           user_id: userId,
@@ -157,7 +163,6 @@ export class QuizService {
         return;
       }
 
-      // Send email
       if (htmlReport) {
         await this.transporter.sendMail({
           from: `"BOOSTLAB" <${this.config.get<string>('SMTP_USER')}>`,

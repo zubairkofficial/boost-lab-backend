@@ -39,6 +39,10 @@ export class User extends Model {
   stripeCustomerId!: string | null;
 
   @AllowNull(true)
+  @Column(DataType.UUID)
+  auth_uid!: string; 
+
+  @AllowNull(true)
   @Column(DataType.DATE)
   declare createdAt: Date;
 

@@ -28,7 +28,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   const sequelize = app.get(Sequelize);
-  await sequelize.sync({ alter: true });
 
   await app.listen(process.env.PORT || 3000);
 }
