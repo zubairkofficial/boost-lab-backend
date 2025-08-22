@@ -229,7 +229,7 @@ export class PlansService {
     await subscription.save();
 
     console.log(
-      `❤️ Subscription updated for user ${subscription.userId} with new expiry ${subscription.expiresAt}`,
+      `Subscription updated for user ${subscription.userId} with new expiry ${subscription.expiresAt}`,
     );
   }
 
