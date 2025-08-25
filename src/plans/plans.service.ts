@@ -44,7 +44,7 @@ export class PlansService {
 
     const price = await this.stripe.prices.create({
       unit_amount: Math.round(dto.price * 100),
-      currency: 'usd',
+      currency: 'eur',
       recurring: {
         interval: 'month',
         interval_count: dto.duration,

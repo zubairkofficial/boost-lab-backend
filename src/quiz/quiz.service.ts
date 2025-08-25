@@ -102,6 +102,7 @@ export class QuizService {
 
     if (userErr) throw new BadRequestException(userErr.message);
     const userId = userData[0].id;
+    const auth_uid = authUser.id;
 
     // Sign JWT token
     const token = this.jwtService.sign({
@@ -110,8 +111,7 @@ export class QuizService {
       stripe_customer_id: stripeCustomer.id,
     });
 
-    // Trigger background tasks (OpenAI + email)
-    this.handleBackgroundTasks(userId, name, email, answers);
+    this.handleBackgroundTasks(userId, auth_uid, name, email, answers);
 
     return {
       message: 'Submitted successfully. Your report will be ready soon.',
@@ -130,6 +130,7 @@ export class QuizService {
    */
   private async handleBackgroundTasks(
     userId: string,
+    auth_uid: string,
     name: string,
     email: string,
     answers: any[],
@@ -153,6 +154,7 @@ export class QuizService {
       const { error: msgErr } = await this.supabase.from('messages').insert([
         {
           user_id: userId,
+          auth_uid,
           email,
           answers,
           html_report: htmlReport,
