@@ -63,11 +63,7 @@ export class PlansController {
   async createCheckoutSession(
     @Body() body: { stripePriceId: string; id: number; autoRenew?: boolean },
   ) {
-    return this.planService.createCheckoutSession(
-      body.stripePriceId,
-      body.id,
-      body.autoRenew ?? false,
-    );
+    return this.planService.createCheckoutSession(body.stripePriceId, body.id);
   }
 
   @Post('webhook/test')
