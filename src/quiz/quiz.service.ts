@@ -48,9 +48,6 @@ export class QuizService {
     console.log('Stripe client initialized');
   }
 
-  /**
-   * Main submission handler
-   */
   async processSubmission(dto: SubmitDto) {
     console.log('Processing submission:', dto);
     const { name, email, password, answers } = dto;
@@ -59,7 +56,6 @@ export class QuizService {
       throw new BadRequestException('Provide exactly 5 answers');
     }
 
-    // Check if user already exists
     const { data: existingUser } = await this.supabase
       .from('users')
       .select('email')
@@ -70,7 +66,6 @@ export class QuizService {
       throw new BadRequestException('Email already exists');
     }
 
-    // Sign up user with Supabase Auth
     const { data: authData, error: authError } =
       await this.supabase.auth.signUp({
         email,
@@ -81,7 +76,6 @@ export class QuizService {
     const authUser = authData.user;
     if (!authUser) throw new BadRequestException('Unable to create user');
 
-    // Hash password and create Stripe customer in parallel
     const [hashedPassword, stripeCustomer] = await Promise.all([
       bcrypt.hash(password, 8),
       this.stripe.customers.create({ email, name }),
@@ -104,7 +98,6 @@ export class QuizService {
     const userId = userData[0].id;
     const auth_uid = authUser.id;
 
-    // Sign JWT token
     const token = this.jwtService.sign({
       email,
       name,
@@ -125,9 +118,6 @@ export class QuizService {
     };
   }
 
-  /**
-   * Background task handler: OpenAI + DB + Email
-   */
   private async handleBackgroundTasks(
     userId: string,
     auth_uid: string,
