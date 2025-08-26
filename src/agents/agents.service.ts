@@ -13,7 +13,7 @@ export class AgentsService {
   constructor(private config: ConfigService) {
     this.supabase = createClient(
       this.config.get<string>('SUPABASE_URL')!,
-      this.config.get<string>('SUPABASE_KEY')!,
+      this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
     this.openai = new OpenAI({
@@ -35,13 +35,12 @@ export class AgentsService {
     }
 
     const identityReport = messageData.html_report;
-
     const auditFormatted = audit_answers
       .map((ans, idx) => `Q${idx + 1}: ${ans}`)
       .join('\n');
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.5,
       messages: [
         { role: 'system', content: stage2SystemPrompt },

@@ -17,18 +17,19 @@ async function bootstrap() {
     }),
   );
 
+  app.enableCors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  });
+
   app.use(
     '/api/v1/plans/webhook',
     bodyParser.raw({ type: 'application/json' }),
   );
 
   app.use(bodyParser.json());
-
-  app.enableCors();
   app.setGlobalPrefix('api/v1');
-
   const sequelize = app.get(Sequelize);
-
   await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

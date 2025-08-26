@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as bcrypt from 'bcryptjs';
 import * as nodemailer from 'nodemailer';
 import Stripe from 'stripe';
 import { SubmitDto } from './dto/submit.dto';
@@ -22,14 +21,12 @@ export class QuizService {
   ) {
     this.supabase = createClient(
       this.config.get<string>('SUPABASE_URL')!,
-      this.config.get<string>('SUPABASE_KEY')!,
+      this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
     );
-    console.log('Supabase client initialized');
 
     this.openai = new OpenAI({
       apiKey: this.config.get<string>('OPENAI_API_KEY')!,
     });
-    console.log('OpenAI client initialized');
 
     this.transporter = nodemailer.createTransport({
       host: this.config.get<string>('SMTP_HOST'),
@@ -40,12 +37,10 @@ export class QuizService {
         pass: this.config.get<string>('SMTP_PASS'),
       },
     });
-    console.log('SMTP transporter initialized');
 
     this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
       apiVersion: '2022-11-15' as any,
     });
-    console.log('Stripe client initialized');
   }
 
   async processSubmission(dto: SubmitDto) {
@@ -56,15 +51,14 @@ export class QuizService {
     }
 
     const { data: authData, error: authError } =
-      await this.supabase.auth.signUp({
-        email,
-        password,
-      });
+      await this.supabase.auth.signUp({ email, password });
     if (authError) throw new BadRequestException(authError.message);
 
     const authUser = authData.user;
     if (!authUser) throw new BadRequestException('Unable to create user');
+
     const stripeCustomer = await this.stripe.customers.create({ email, name });
+
     const { data: userData, error: userErr } = await this.supabase
       .from('users')
       .insert([
@@ -76,7 +70,6 @@ export class QuizService {
         },
       ])
       .select();
-
     if (userErr) throw new BadRequestException(userErr.message);
 
     const userId = userData[0].id;
@@ -92,12 +85,7 @@ export class QuizService {
     return {
       message: 'Submitted successfully. Your report will be ready soon.',
       token,
-      user: {
-        userId,
-        name,
-        email,
-        stripe_customer_id: stripeCustomer.id,
-      },
+      user: { userId, name, email, stripe_customer_id: stripeCustomer.id },
     };
   }
 
@@ -109,9 +97,10 @@ export class QuizService {
     answers: any[],
   ) {
     try {
-      const userMessage = answers
-        .map((a) => `${a.question}: ${a.choice}`)
-        .join('\n');
+      // Include user's name at the top for OpenAI
+      const userMessage =
+        `User Name: ${name}\n` +
+        answers.map((a) => `${a.question}: ${a.choice}`).join('\n');
 
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o',
@@ -122,7 +111,8 @@ export class QuizService {
         ],
       });
 
-      const htmlReport = completion.choices?.[0]?.message?.content || '';
+      const modelHtml = completion.choices?.[0]?.message?.content || '';
+      const htmlReport = modelHtml;
 
       const { error: msgErr } = await this.supabase.from('messages').insert([
         {
@@ -133,10 +123,7 @@ export class QuizService {
           html_report: htmlReport,
         },
       ]);
-      if (msgErr) {
-        console.error('Error saving message:', msgErr);
-        return;
-      }
+      if (msgErr) console.error('Error saving message:', msgErr);
 
       if (htmlReport) {
         await this.transporter.sendMail({
@@ -159,11 +146,8 @@ export class QuizService {
       .select('html_report')
       .eq('email', email)
       .single();
-
-    if (error || !data) {
+    if (error || !data)
       throw new BadRequestException('No results found for this email');
-    }
-
     return data.html_report;
   }
 
@@ -172,19 +156,16 @@ export class QuizService {
       email,
       password,
     });
-
-    if (error || !data.user) {
+    if (error || !data.user)
       throw new BadRequestException('Invalid email or password');
-    }
+
     const { data: userRow, error: userErr } = await this.supabase
       .from('users')
       .select('*')
       .eq('auth_uid', data.user.id)
       .single();
-
-    if (userErr || !userRow) {
+    if (userErr || !userRow)
       throw new BadRequestException('User profile not found');
-    }
 
     const token = this.jwtService.sign({
       email: data.user.email,
