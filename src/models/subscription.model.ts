@@ -35,9 +35,12 @@ export class Subscription extends Model {
 
   @BelongsTo(() => Plan)
   declare plan: Plan;
-
-  @Column({ defaultValue: false })
-  autoRenew: boolean;
+  @Column({
+    field: 'stripe_session_id', 
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  stripeSessionId: string;
 
   @Default('active')
   @Column({

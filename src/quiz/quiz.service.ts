@@ -49,21 +49,10 @@ export class QuizService {
   }
 
   async processSubmission(dto: SubmitDto) {
-    console.log('Processing submission:', dto);
     const { name, email, password, answers } = dto;
 
     if (!answers || answers.length !== 5) {
       throw new BadRequestException('Provide exactly 5 answers');
-    }
-
-    const { data: existingUser } = await this.supabase
-      .from('users')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
     }
 
     const { data: authData, error: authError } =
@@ -75,19 +64,13 @@ export class QuizService {
 
     const authUser = authData.user;
     if (!authUser) throw new BadRequestException('Unable to create user');
-
-    const [hashedPassword, stripeCustomer] = await Promise.all([
-      bcrypt.hash(password, 8),
-      this.stripe.customers.create({ email, name }),
-    ]);
-
+    const stripeCustomer = await this.stripe.customers.create({ email, name });
     const { data: userData, error: userErr } = await this.supabase
       .from('users')
       .insert([
         {
           name,
           email,
-          password: hashedPassword,
           stripe_customer_id: stripeCustomer.id,
           auth_uid: authUser.id,
         },
@@ -95,8 +78,8 @@ export class QuizService {
       .select();
 
     if (userErr) throw new BadRequestException(userErr.message);
+
     const userId = userData[0].id;
-    const auth_uid = authUser.id;
 
     const token = this.jwtService.sign({
       email,
@@ -104,7 +87,7 @@ export class QuizService {
       stripe_customer_id: stripeCustomer.id,
     });
 
-    this.handleBackgroundTasks(userId, auth_uid, name, email, answers);
+    this.handleBackgroundTasks(userId, authUser.id, name, email, answers);
 
     return {
       message: 'Submitted successfully. Your report will be ready soon.',
@@ -170,9 +153,6 @@ export class QuizService {
     }
   }
 
-  /**
-   * Fetch quiz results
-   */
   async getQuizResultByEmail(email: string) {
     const { data, error } = await this.supabase
       .from('messages')
@@ -187,39 +167,39 @@ export class QuizService {
     return data.html_report;
   }
 
-  /**
-   * Login handler
-   */
   async login(email: string, password: string) {
-    const { data: user, error } = await this.supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (error || !user) {
+    if (error || !data.user) {
       throw new BadRequestException('Invalid email or password');
     }
+    const { data: userRow, error: userErr } = await this.supabase
+      .from('users')
+      .select('*')
+      .eq('auth_uid', data.user.id)
+      .single();
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new BadRequestException('Invalid email or password');
+    if (userErr || !userRow) {
+      throw new BadRequestException('User profile not found');
     }
 
     const token = this.jwtService.sign({
-      email: user.email,
-      name: user.name,
-      stripe_customer_id: user.stripe_customer_id,
+      email: data.user.email,
+      name: userRow.name,
+      stripe_customer_id: userRow.stripe_customer_id,
     });
 
     return {
       message: 'Login successful',
       token,
       user: {
-        userId: user.id,
-        name: user.name,
-        email: user.email,
-        stripe_customer_id: user.stripe_customer_id,
+        userId: userRow.id,
+        name: userRow.name,
+        email: data.user.email,
+        stripe_customer_id: userRow.stripe_customer_id,
       },
     };
   }

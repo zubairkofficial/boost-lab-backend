@@ -21,11 +21,8 @@ export class CreatePlanDto {
   @IsNumber()
   price: number;
 
-  @IsNumber()
-  @IsOptional()
-  oldPrice?: number;
-
   @IsArray()
+  @IsString({ each: true })
   @IsOptional()
   description?: string[];
 
@@ -44,11 +41,8 @@ export class UpdatePlanDto {
   @IsOptional()
   price?: number;
 
-  @IsNumber()
-  @IsOptional()
-  oldPrice?: number;
-
   @IsArray()
+  @IsString({ each: true })
   @IsOptional()
   description?: string[];
 
