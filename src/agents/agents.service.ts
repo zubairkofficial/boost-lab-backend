@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { AgentDto } from './agent-dto/agent.dto';
-import { stage2SystemPrompt } from './system-prompts/stage2-prompt';
+import { SYSTEM_PROMPT } from '../agents/system-prompts/stage2-prompt';
 import { InjectModel } from '@nestjs/sequelize';
 import { MarketingStrategy } from '../models/marketing-strategy.model';
 import { User } from '../models/user.model';
@@ -52,7 +52,7 @@ export class AgentsService {
       model: 'gpt-4o-mini',
       temperature: 0.5,
       messages: [
-        { role: 'system', content: stage2SystemPrompt },
+        { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `Identity Report:\n${identityReport}` },
         { role: 'user', content: `Audit Answers:\n${auditFormatted}` },
       ],
