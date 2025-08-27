@@ -6,7 +6,7 @@ import * as nodemailer from 'nodemailer';
 import Stripe from 'stripe';
 import { SubmitDto } from './dto/submit.dto';
 import { JwtService } from '@nestjs/jwt';
-import { SYSTEM_PROMPT } from '../agents/system-prompts/stage2-prompt';
+import { SYSTEM_PROMPT } from '../utils/system-prompt';
 
 @Injectable()
 export class QuizService {
