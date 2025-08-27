@@ -4,13 +4,22 @@ import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { AgentDto } from './agent-dto/agent.dto';
 import { stage2SystemPrompt } from './system-prompts/stage2-prompt';
+import { InjectModel } from '@nestjs/sequelize';
+import { MarketingStrategy } from '../models/marketing-strategy.model';
+import { User } from '../models/user.model';
 
 @Injectable()
 export class AgentsService {
   private supabase: SupabaseClient;
   private openai: OpenAI;
 
-  constructor(private config: ConfigService) {
+  constructor(
+    private config: ConfigService,
+    @InjectModel(MarketingStrategy)
+    private strategyModel: typeof MarketingStrategy,
+    @InjectModel(User)
+    private userModel: typeof User,
+  ) {
     this.supabase = createClient(
       this.config.get<string>('SUPABASE_URL')!,
       this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -50,10 +59,19 @@ export class AgentsService {
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
-
+    const user = await this.userModel.findOne({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    const strategy = await this.strategyModel.create({
+      userId: user.id,
+      auditAnswers: audit_answers,
+      strategyText: strategyOutput,
+    });
+    const strategyData = strategy.toJSON();
     return {
-      message: 'Marketing strategy generated successfully.',
-      strategy: strategyOutput,
+      message: 'Marketing strategy generated and saved successfully.',
+      strategy: strategyData.strategyText,
     };
   }
 }
