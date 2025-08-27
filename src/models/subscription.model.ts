@@ -36,9 +36,10 @@ export class Subscription extends Model {
   @BelongsTo(() => Plan)
   declare plan: Plan;
   @Column({
-    field: 'stripe_session_id', 
+    field: 'stripe_session_id',
     type: DataType.STRING,
-    allowNull: true,
+    allowNull: false,
+    unique: true,
   })
   stripeSessionId: string;
 

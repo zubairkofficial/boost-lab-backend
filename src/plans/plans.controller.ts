@@ -66,12 +66,6 @@ export class PlansController {
     return this.planService.createCheckoutSession(body.stripePriceId, body.id);
   }
 
-  @Post('webhook/test')
-  async testWebhook(@Body() body: any) {
-    await this.planService.handleSuccessfulPayment(body);
-    return { message: 'Test webhook triggered', session: body };
-  }
-
   @Post('webhook')
   async handleWebhook(@Req() req: Request, @Res() res: Response) {
     const signature = req.headers['stripe-signature'] as string;

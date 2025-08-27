@@ -138,10 +138,19 @@ export class PlansService {
       return;
     }
 
+    const existing = await this.subscriptionModel.findOne({
+      where: { stripeSessionId: session.id },
+    });
+
+    if (existing) {
+      console.log(`Subscription already exists for session ${session.id}`);
+      return existing;
+    }
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    await this.subscriptionModel.upsert({
+    const subscription = await this.subscriptionModel.create({
       userId: parseInt(userId),
       planId: parseInt(planId),
       status: 'active',
@@ -155,7 +164,11 @@ export class PlansService {
       { where: { id: parseInt(userId) } },
     );
 
-    console.log(`Subscription and user plan updated: user ${userId}, plan ${planId}`);
+    console.log(
+      `✅ Subscription created: user ${userId}, plan ${planId}, session ${session.id}`,
+    );
+
+    return subscription;
   }
 
   async handleSubscriptionCancelled(subscription: Stripe.Subscription) {
@@ -229,7 +242,10 @@ export class PlansService {
               billingName = customer.name || null;
             }
           } catch (err) {
-            console.error(`Error retrieving customer ${invoice.customer}:`, err);
+            console.error(
+              `Error retrieving customer ${invoice.customer}:`,
+              err,
+            );
           }
         }
 
