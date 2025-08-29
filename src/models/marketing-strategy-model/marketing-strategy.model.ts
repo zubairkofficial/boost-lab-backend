@@ -1,3 +1,4 @@
+
 import {
   Table,
   Column,
@@ -9,7 +10,7 @@ import {
   ForeignKey,
   BelongsTo,
 } from 'sequelize-typescript';
-import { User } from './user.model';
+import { User } from '../user.model';
 
 @Table({
   tableName: 'marketing_strategies',

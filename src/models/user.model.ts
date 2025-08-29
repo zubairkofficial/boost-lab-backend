@@ -40,7 +40,7 @@ export class User extends Model {
 
   @AllowNull(true)
   @Column(DataType.UUID)
-  auth_uid!: string; 
+  auth_uid!: string;
 
   @AllowNull(true)
   @Column(DataType.DATE)

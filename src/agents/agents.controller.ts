@@ -7,7 +7,7 @@ export class AgentsController {
   constructor(private readonly agentService: AgentsService) {}
 
   @Post('strategy')
-  generateStrategy(@Body() dto: AgentDto) {
+  async generateStrategy(@Body() dto: AgentDto) {
     return this.agentService.generateStrategy(dto);
   }
 }

@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 import { AgentDto } from './agent-dto/agent.dto';
 import { SYSTEM_PROMPT } from '../agents/system-prompts/stage2-prompt';
 import { InjectModel } from '@nestjs/sequelize';
-import { MarketingStrategy } from '../models/marketing-strategy.model';
+import { MarketingStrategy } from '../models/marketing-strategy-model/marketing-strategy.model';
 import { User } from '../models/user.model';
 
 @Injectable()
@@ -31,12 +31,11 @@ export class AgentsService {
   }
 
   async generateStrategy(dto: AgentDto) {
-    const { email, audit_answers } = dto;
 
     const { data: messageData, error } = await this.supabase
       .from('messages')
       .select('html_report')
-      .eq('email', email)
+      .eq('email', dto.email)
       .single();
 
     if (error || !messageData) {
@@ -44,9 +43,9 @@ export class AgentsService {
     }
 
     const identityReport = messageData.html_report;
-    const auditFormatted = audit_answers
-      .map((ans, idx) => `Q${idx + 1}: ${ans}`)
-      .join('\n');
+    const user_message = dto.audit_answers?.length
+      ? dto.audit_answers.join('\n')
+      : 'No additional user input provided.';
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -54,24 +53,15 @@ export class AgentsService {
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `Identity Report:\n${identityReport}` },
-        { role: 'user', content: `Audit Answers:\n${auditFormatted}` },
+        { role: 'user', content: `User Input:\n${user_message}` },
       ],
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
-    const user = await this.userModel.findOne({ where: { email } });
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    const strategy = await this.strategyModel.create({
-      userId: user.id,
-      auditAnswers: audit_answers,
-      strategyText: strategyOutput,
-    });
-    const strategyData = strategy.toJSON();
+
     return {
-      message: 'Marketing strategy generated and saved successfully.',
-      strategy: strategyData.strategyText,
+      message: 'Response generated successfully.',
+      strategy: strategyOutput,
     };
   }
 }
