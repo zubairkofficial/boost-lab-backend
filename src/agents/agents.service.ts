@@ -7,6 +7,7 @@ import { SYSTEM_PROMPT } from '../agents/system-prompts/stage2-prompt';
 import { InjectModel } from '@nestjs/sequelize';
 import { MarketingStrategy } from '../models/marketing-strategy-model/marketing-strategy.model';
 import { User } from '../models/user.model';
+import { StrategyChat } from '../models/StrategyChat.model';
 
 @Injectable()
 export class AgentsService {
@@ -19,6 +20,8 @@ export class AgentsService {
     private strategyModel: typeof MarketingStrategy,
     @InjectModel(User)
     private userModel: typeof User,
+    @InjectModel(StrategyChat)
+    private strategyChatModel: typeof StrategyChat,
   ) {
     this.supabase = createClient(
       this.config.get<string>('SUPABASE_URL')!,
@@ -31,11 +34,17 @@ export class AgentsService {
   }
 
   async generateStrategy(dto: AgentDto) {
+    const { email, audit_answers } = dto;
+
+    const user = await this.userModel.findOne({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User not found for this email');
+    }
 
     const { data: messageData, error } = await this.supabase
       .from('messages')
       .select('html_report')
-      .eq('email', dto.email)
+      .eq('email', email)
       .single();
 
     if (error || !messageData) {
@@ -43,25 +52,76 @@ export class AgentsService {
     }
 
     const identityReport = messageData.html_report;
-    const user_message = dto.audit_answers?.length
-      ? dto.audit_answers.join('\n')
+
+    // Save user input
+    const user_message = audit_answers?.length
+      ? audit_answers.join('\n')
       : 'No additional user input provided.';
 
+    await this.strategyChatModel.create({
+      userId: user.id,
+      sender: 'user',
+      receiver: 'bot',
+      message: user_message,
+    });
+
+    // Fetch conversation history
+    const history = await this.strategyChatModel.findAll({
+      where: { userId: user.id },
+      order: [['createdAt', 'ASC']],
+    });
+
+    // Build messages with explicit typing
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Identity Report:\n${identityReport}` },
+      ...history.map((msg) =>
+        ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.message,
+        }) as OpenAI.Chat.ChatCompletionMessageParam,
+      ),
+    ];
+
+    // Call OpenAI with full context
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.5,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Identity Report:\n${identityReport}` },
-        { role: 'user', content: `User Input:\n${user_message}` },
-      ],
+      messages,
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
 
+    // Save bot response
+    await this.strategyChatModel.create({
+      userId: user.id,
+      sender: 'bot',
+      receiver: 'user',
+      message: strategyOutput,
+    });
+
     return {
+      success: true,
       message: 'Response generated successfully.',
       strategy: strategyOutput,
+    };
+  }
+
+  async getChatHistory(email: string) {
+    const user = await this.userModel.findOne({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const history = await this.strategyChatModel.findAll({
+      where: { userId: user.id },
+      order: [['createdAt', 'ASC']],
+    });
+
+    return {
+      success: true,
+      email,
+      history,
     };
   }
 }

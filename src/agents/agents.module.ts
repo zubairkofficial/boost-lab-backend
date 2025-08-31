@@ -5,11 +5,12 @@ import { AgentsService } from './agents.service';
 import { AgentsController } from './agents.controller';
 import { MarketingStrategy } from '../models/marketing-strategy-model/marketing-strategy.model';
 import { User } from '../models/user.model';
+import { StrategyChat } from 'src/models/StrategyChat.model';
 
 @Module({
   imports: [
     ConfigModule,
-    SequelizeModule.forFeature([MarketingStrategy, User]),
+    SequelizeModule.forFeature([MarketingStrategy, User, StrategyChat]),
   ],
   controllers: [AgentsController],
   providers: [AgentsService],

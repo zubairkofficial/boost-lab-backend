@@ -1,12 +1,10 @@
-import { IsArray, ArrayNotEmpty, IsNotEmpty, IsEmail, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsEmail } from 'class-validator';
 
 export class AgentDto {
   @IsEmail()
-  email: string;
+  @IsNotEmpty()
+  email!: string;
 
   @IsOptional()
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsNotEmpty({ each: true })
   audit_answers?: string[];
 }
