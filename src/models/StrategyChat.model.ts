@@ -28,9 +28,6 @@ export class StrategyChat extends Model {
   @Column(DataType.STRING)
   declare sender: string; 
 
-  @AllowNull(false)
-  @Column(DataType.STRING)
-  declare receiver: string; 
 
   @AllowNull(false)
   @Column(DataType.TEXT)

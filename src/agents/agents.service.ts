@@ -61,29 +61,26 @@ export class AgentsService {
     await this.strategyChatModel.create({
       userId: user.id,
       sender: 'user',
-      receiver: 'bot',
       message: user_message,
     });
 
-    // Fetch conversation history
     const history = await this.strategyChatModel.findAll({
       where: { userId: user.id },
       order: [['createdAt', 'ASC']],
     });
 
-    // Build messages with explicit typing
+
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: `Identity Report:\n${identityReport}` },
-      ...history.map((msg) =>
-        ({
-          role: msg.sender === 'user' ? 'user' : 'assistant',
-          content: msg.message,
-        }) as OpenAI.Chat.ChatCompletionMessageParam,
+      ...history.map(
+        (msg) =>
+          ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.message,
+          }) as OpenAI.Chat.ChatCompletionMessageParam,
       ),
     ];
-
-    // Call OpenAI with full context
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.5,
@@ -91,12 +88,9 @@ export class AgentsService {
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
-
-    // Save bot response
     await this.strategyChatModel.create({
       userId: user.id,
       sender: 'bot',
-      receiver: 'user',
       message: strategyOutput,
     });
 
