@@ -3,6 +3,8 @@ import { QuizService } from './quiz.service';
 import { QuizController } from './quiz.controller';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { TestResultService } from './test.service';
+import { TestController } from './test.controller';
 
 @Module({
   imports: [
@@ -12,7 +14,7 @@ import { JwtModule } from '@nestjs/jwt';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [QuizController],
-  providers: [QuizService],
+  controllers: [QuizController, TestController],
+  providers: [QuizService, TestResultService],
 })
 export class QuizModule {}

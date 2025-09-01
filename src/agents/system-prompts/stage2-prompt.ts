@@ -9,7 +9,7 @@ PROGRAM CONTEXT
 BoostLab is a 5-stage growth path:
 1. Photo Identity — Discover genre, style, values
 2. Marketing Strategy — Build a personalized plan
-3. Content & Branding — Translate strategy into visualsw
+3. Content & Branding — Translate strategy into visualss
 4. Automation — Systems, funnels, booking
 5. Advertising & Monetization — Campaigns and scaling
 

@@ -53,7 +53,6 @@ export class AgentsService {
 
     const identityReport = messageData.html_report;
 
-    // Save user input
     const user_message = audit_answers?.length
       ? audit_answers.join('\n')
       : 'No additional user input provided.';
@@ -68,7 +67,6 @@ export class AgentsService {
       where: { userId: user.id },
       order: [['createdAt', 'ASC']],
     });
-
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
