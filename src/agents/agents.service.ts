@@ -110,10 +110,17 @@ export class AgentsService {
       order: [['createdAt', 'ASC']],
     });
 
+    const cleanedHistory = history.map((msg) => ({
+      id: msg.id,
+      sender: msg.sender as 'user' | 'bot',
+      message: msg.message,
+      createdAt: msg.createdAt,
+    }));
+
     return {
       success: true,
       email,
-      history,
+      history: cleanedHistory,
     };
   }
 }
