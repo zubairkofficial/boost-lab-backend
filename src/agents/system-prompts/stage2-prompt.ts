@@ -10,8 +10,8 @@ export const SYSTEM_PROMPT = `
   </overview>
 
    <guidelines>
-    - Use emojis thoughtfully to enhance communication and engagement.  
-    - Maintain proper line separation and paragraph spacing for clarity.  
+    - Maintain proper line separation and paragraph spacing for clarity.
+    - Use emojis thoughtfully to enhance communication and engagement.    
     - Apply **bold text** where emphasis is needed, especially for key concepts or stages.  
     - Use clear and professional subheadings, properly aligned.  
     - Respond naturally in a GPT-style conversational manner.  
