@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as nodemailer from 'nodemailer';
 import Stripe from 'stripe';
-import { SubmitDto } from './dto/submit.dto';
+import { HandleBackgroundTasksDto, SubmitDto } from './dto/submit.dto';
 import { JwtService } from '@nestjs/jwt';
 import { SYSTEM_PROMPT } from '../utils/system-prompt';
 
@@ -23,11 +23,10 @@ export class QuizService {
       this.config.get<string>('SUPABASE_URL')!,
       this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
     );
-
+    console.log('///', process.env.OPENAI_API_KEY);
     this.openai = new OpenAI({
       apiKey: this.config.get<string>('OPENAI_API_KEY')!,
     });
-
     this.transporter = nodemailer.createTransport({
       host: this.config.get<string>('SMTP_HOST'),
       port: Number(this.config.get<string>('SMTP_PORT') || 587),
@@ -80,7 +79,13 @@ export class QuizService {
       stripe_customer_id: stripeCustomer.id,
     });
 
-    this.handleBackgroundTasks(userId, authUser.id, name, email, answers);
+    await this.handleBackgroundTasks({
+      userId,
+      auth_uid: authUser.id,
+      name,
+      email,
+      answers,
+    });
 
     return {
       message: 'Submitted successfully. Your report will be ready soon.',
@@ -89,21 +94,16 @@ export class QuizService {
     };
   }
 
-  private async handleBackgroundTasks(
-    userId: string,
-    auth_uid: string,
-    name: string,
-    email: string,
-    answers: any[],
-  ) {
+  async handleBackgroundTasks(dto: HandleBackgroundTasksDto) {
+    const { userId, auth_uid, name, email, answers } = dto;
+
     try {
-      // Include user's name at the top for OpenAI
       const userMessage =
         `User Name: ${name}\n` +
         answers.map((a) => `${a.question}: ${a.choice}`).join('\n');
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-mini',
         temperature: 0.3,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },

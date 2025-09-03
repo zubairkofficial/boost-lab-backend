@@ -15,7 +15,7 @@ import { Subscription } from './subscription.model';
   tableName: 'users',
   timestamps: true,
 })
-export class User extends Model {
+export class User extends Model<User> {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
@@ -24,32 +24,24 @@ export class User extends Model {
   @Unique
   @AllowNull(true)
   @Column(DataType.STRING)
-  email!: string;
+  declare email: string | null;
 
   @AllowNull(true)
   @Column(DataType.STRING)
-  name!: string;
+  declare name: string | null;
 
   @AllowNull(true)
   @Column(DataType.STRING)
-  password!: string;
+  declare password: string | null;
 
   @AllowNull(true)
   @Column({ field: 'stripe_customer_id', type: DataType.STRING })
-  stripeCustomerId!: string | null;
+  declare stripeCustomerId: string | null;
 
   @AllowNull(true)
   @Column(DataType.UUID)
-  auth_uid!: string;
-
-  @AllowNull(true)
-  @Column(DataType.DATE)
-  declare createdAt: Date;
-
-  @AllowNull(true)
-  @Column(DataType.DATE)
-  declare updatedAt: Date;
+  declare auth_uid: string | null;
 
   @HasMany(() => Subscription)
-  declare subscriptions: Subscription[];
+  declare subscriptions?: Subscription[];
 }

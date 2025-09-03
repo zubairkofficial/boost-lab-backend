@@ -38,3 +38,10 @@ export class SubmitDto {
   @Type(() => AnswerDto)
   answers: AnswerDto[];
 }
+export interface HandleBackgroundTasksDto {
+  userId: number;
+  auth_uid: string;
+  name: string;
+  email: string;
+  answers: AnswerDto[];
+}

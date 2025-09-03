@@ -38,6 +38,15 @@ export class PlansController {
   findOne(@Param('id') id: string) {
     return this.planService.findOne(id);
   }
+  @Post('test-mail')
+  async testMail(@Body() body: { name: string; email: string }) {
+    try {
+      await this.planService.sendWelcomeEmail(body.name, body.email);
+      return { success: true, message: `Test email sent to ${body.email}` };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
 
   @Patch('update/:id')
   update(@Param('id') id: string, @Body() dto: UpdatePlanDto) {

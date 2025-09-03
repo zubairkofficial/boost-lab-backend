@@ -11,7 +11,7 @@ import { ScheduleModule } from '@nestjs/schedule';
   imports: [
     ConfigModule,
     SequelizeModule.forFeature([Plan, Subscription]),
-    ScheduleModule.forRoot(), 
+    ScheduleModule.forRoot(),
   ],
   controllers: [PlansController],
   providers: [PlansService],

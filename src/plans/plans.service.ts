@@ -11,12 +11,14 @@ import { Plan } from './../models/plans.model';
 import { Subscription } from '../models/subscription.model';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
 import { Op } from 'sequelize';
+import { MailerService } from '@nestjs-modules/mailer';
+import { User } from 'src/models/user.model';
 
 @Injectable()
 export class PlansService {
   private stripe: Stripe;
-
   constructor(
+    private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
     @InjectModel(Plan)
     private readonly planModel: typeof Plan,
@@ -132,43 +134,88 @@ export class PlansService {
   }
 
   async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
-    const { userId, planId } = session.metadata!;
+    const { userId, planId } = session.metadata ?? {};
     if (!userId || !planId) {
-      console.error('Missing metadata:', session.id);
       return;
     }
 
-    const existing = await this.subscriptionModel.findOne({
-      where: { stripeSessionId: session.id },
-    });
+    try {
+      let subscription = await this.subscriptionModel.findOne({
+        where: { stripeSessionId: session.id },
+      });
 
-    if (existing) {
-      console.log(`Subscription already exists for session ${session.id}`);
-      return existing;
+      if (!subscription) {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        subscription = await this.subscriptionModel.create({
+          userId: parseInt(userId),
+          planId: parseInt(planId),
+          status: 'active',
+          subscribedAt: now,
+          expiresAt,
+          stripeSessionId: session.id,
+        });
+
+        await this.planModel.sequelize?.models.User.update(
+          { planId: parseInt(planId) },
+          { where: { id: parseInt(userId) } },
+        );
+
+        console.log(
+          `✅ Subscription created: user ${userId}, plan ${planId}, session ${session.id}`,
+        );
+      } else {
+        console.log(
+          `ℹ️ Subscription already exists for session ${session.id}. Skipping creation, but sending email anyway.`,
+        );
+      }
+
+      const user: any =
+        await this.planModel.sequelize?.models.User.findByPk(userId);
+      console.log('.....', user);
+      if (user && user.email) {
+        try {
+          await this.sendWelcomeEmail(user.name, user.email);
+          console.log(`📧 Welcome email sent to ${user.email}`);
+        } catch (err: any) {
+          console.error('❌ Failed to send welcome email:', err.message ?? err);
+        }
+      } else {
+        console.warn('⚠️ User not found or email missing:', userId);
+      }
+
+      return subscription;
+    } catch (err: any) {
+      console.error('❌ Error in handleSuccessfulPayment:', err.message ?? err);
     }
+  }
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    const subscription = await this.subscriptionModel.create({
-      userId: parseInt(userId),
-      planId: parseInt(planId),
-      status: 'active',
-      subscribedAt: now,
-      expiresAt,
-      stripeSessionId: session.id,
-    });
-
-    await this.planModel.sequelize?.models.User.update(
-      { planId: parseInt(planId) },
-      { where: { id: parseInt(userId) } },
-    );
-
-    console.log(
-      `✅ Subscription created: user ${userId}, plan ${planId}, session ${session.id}`,
-    );
-
-    return subscription;
+  async sendWelcomeEmail(name: string, email: string) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Welcome to BOOSTLAB – Your Account is Ready 🚀',
+        html: `
+        <p>Hi ${name},</p>
+        <p>Thanks for joining BOOSTLAB! 🎉<br/>
+        Your personal account has been created successfully.</p>
+        <p>
+          🔗 <a href="https://app.boostlab.ph/auth/login">Go to login</a><br/>
+          📧 Email: ${email}<br/>
+          🔑 Password: <i>the one you set during registration</i>
+        </p>
+        <p>Let’s build something amazing together.</p>
+        <p>If you ever forget your password, you can reset it from the login screen.</p>
+        <p>— The BOOSTLAB Team</p>
+        <p>Thanks!</p>
+      `,
+      });
+      console.log(`✅ sendWelcomeEmail executed for ${email}`);
+    } catch (err: any) {
+      console.error('sendWelcomeEmail failed:', err.message ?? err);
+      throw err;
+    }
   }
 
   async handleSubscriptionCancelled(subscription: Stripe.Subscription) {
