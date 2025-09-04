@@ -8,13 +8,13 @@ import {
   Delete,
   Req,
   Res,
-  HttpException,
-  HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
+import { QuizService } from 'src/quiz/quiz.service';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
   apiVersion: '2025-06-30' as any,
@@ -22,7 +22,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
 
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly planService: PlansService) {}
+  constructor(
+    private readonly planService: PlansService,
+    private readonly quizService: QuizService, // inject QuizService
+  ) {}
 
   @Post('create')
   create(@Body() dto: CreatePlanDto) {
@@ -38,6 +41,7 @@ export class PlansController {
   findOne(@Param('id') id: string) {
     return this.planService.findOne(id);
   }
+
   @Post('test-mail')
   async testMail(@Body() body: { name: string; email: string }) {
     try {
@@ -62,10 +66,19 @@ export class PlansController {
   removeAll() {
     return this.planService.removeAll();
   }
+  @Get('invoice-history/:email')
+  async getInvoiceHistory(@Param('email') email: string) {
+    const { data: user, error } = await this.quizService['supabase']
+      .from('users')
+      .select('stripe_customer_id')
+      .eq('email', email)
+      .single();
 
-  @Get('invoice-history')
-  async getInvoiceHistory() {
-    return this.planService.getInvoiceHistory();
+    if (error || !user?.stripe_customer_id) {
+      throw new BadRequestException('Customer ID not found for this email');
+    }
+
+    return this.planService.getInvoiceHistory(user.stripe_customer_id);
   }
 
   @Post('checkout-session')
@@ -124,5 +137,10 @@ export class PlansController {
   @Post('cancel-subscription/:userId')
   async cancelSubscription(@Param('userId') userId: number) {
     return this.planService.cancelUserSubscription(userId);
+  }
+
+  @Post('customer-portal')
+  async customerPortal(@Body() body: { customerId: string }) {
+    return this.planService.createCustomerPortalSession(body.customerId);
   }
 }

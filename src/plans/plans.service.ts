@@ -267,66 +267,30 @@ export class PlansService {
     };
   }
 
-  async getInvoiceHistory(limit = 10) {
-    const invoices = await this.stripe.invoices.list({
-      limit,
-      expand: ['data.payment_intent.payment_method'],
-    });
+async getInvoiceHistory(customerId: string, limit = 10) {
+  if (!customerId) throw new Error('Customer ID is required');
+  const invoices = await this.stripe.invoices.list({
+    customer: customerId, 
+    limit,
+    expand: ['data.payment_intent.payment_method'],
+  });
 
-    const enriched = await Promise.all(
-      invoices.data.map(async (invoice) => {
-        let email: string | null = null;
-        let billingName: string | null = null;
-        let paymentMethod: string | null = 'N/A';
+  console.log(invoices);
 
-        if (typeof invoice.customer === 'string') {
-          try {
-            const customer = await this.stripe.customers.retrieve(
-              invoice.customer,
-            );
-            if (!('deleted' in customer)) {
-              email = customer.email;
-              billingName = customer.name || null;
-            }
-          } catch (err) {
-            console.error(
-              `Error retrieving customer ${invoice.customer}:`,
-              err,
-            );
-          }
-        }
+  return invoices.data.map(invoice => ({
+    id: invoice.id,
+    number: invoice.number,
+    amountDue: invoice.amount_due,
+    amountPaid: invoice.amount_paid,
+    currency: invoice.currency,
+    status: invoice.status,
+    hostedInvoiceUrl: invoice.hosted_invoice_url,
+    invoicePdf: invoice.invoice_pdf,
+    createdAt: new Date(invoice.created * 1000),
+  }));
+}
 
-        const intent = (invoice as any).payment_intent as Stripe.PaymentIntent;
-        if (
-          intent &&
-          typeof intent.payment_method === 'object' &&
-          intent.payment_method &&
-          'type' in intent.payment_method
-        ) {
-          paymentMethod = (intent.payment_method as Stripe.PaymentMethod).type;
-        }
 
-        return {
-          id: invoice.id,
-          number: invoice.number,
-          amountDue: invoice.amount_due,
-          amountPaid: invoice.amount_paid,
-          currency: invoice.currency,
-          status: invoice.status,
-          hostedInvoiceUrl: invoice.hosted_invoice_url,
-          invoicePdf: invoice.invoice_pdf,
-          createdAt: new Date(invoice.created * 1000),
-          email,
-          billingName,
-          paymentMethod,
-        };
-      }),
-    );
-
-    return enriched.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-    );
-  }
 
   async verifyPaymentSuccess(sessionId: string) {
     try {
@@ -336,5 +300,22 @@ export class PlansService {
       console.error('Error verifying payment:', error);
       return false;
     }
+  }
+  async createCustomerPortalSession(
+    customerId: string,
+  ): Promise<{ url: string }> {
+    if (!customerId) {  
+      throw new HttpException(
+        'Customer ID is required',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${this.configService.get('PAYMENT_URL')}/personal-account`,
+    });
+
+    return { url: session.url! };
   }
 }
