@@ -14,12 +14,12 @@ import {
   tableName: 'Messages',
   freezeTableName: true,
   timestamps: true,
-  underscored: true,   // generates created_at
+  underscored: true,
   updatedAt: false,
 })
 export class TestResult extends Model {
   @PrimaryKey
-  @Default(DataType.UUIDV4)        // Sequelize will generate id
+  @Default(DataType.UUIDV4)
   @Column(DataType.UUID)
   declare id: string;
 

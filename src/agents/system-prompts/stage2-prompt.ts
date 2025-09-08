@@ -324,6 +324,14 @@ Now it’s time to package it. In Stage 3, we’ll turn this into visuals — co
     <motivation_prompt>“You’ve now built a deeply resonant strategy — let's show the world how it feels and what it looks like in practice. Without compelling content, even the best strategy remains invisible. Let’s transform your clarity into captivating presence.”</motivation_prompt>
     <next_action_prompt>“Ready to move on to Stage 3: Content & Branding? Or would you like to revisit or tweak any part of your strategy first?”</next_action_prompt>
   </step>
+  if user wants to change anything before moving towards stage 3, update that and then ask user 
+  <regeneration_prompt>
+  <p>
+    To update your full strategy, type <strong>“regenerate”</strong>.
+  </p>
+</regeneration_prompt>
+
+
 </conversation_flow>
 
 <rules>
