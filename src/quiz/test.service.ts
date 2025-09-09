@@ -5,7 +5,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as nodemailer from 'nodemailer';
 import { SubmitTestDto } from './dto/submit-test.dto';
 import { JwtService } from '@nestjs/jwt';
-import { SYSTEM_PROMPT } from '../utils/system-prompt';
+import { SYSTEM_PROMPT } from './quiz-system-prompt';
 
 @Injectable()
 export class TestResultService {

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
-import { AgentDto } from './agent-dto/agent.dto';
-import { AgentsService } from './agents.service';
+import { AgentDto } from './stage2.dto';
+import { AgentsService } from './stage2.service';
 
 @Controller('agent')
 export class AgentsController {

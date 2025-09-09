@@ -8,13 +8,14 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PlansModule } from './plans/plans.module';
-import { TestResultModule } from './test-result/test-result.module';
 import { Plan } from './models/plans.model';
 import { Subscription } from './models/subscription.model';
 import { QuizModule } from './quiz/quiz.module';
 import { User } from './models/user.model';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AgentsModule } from './agents/agents.module';
+import { AgentsModule } from './agents/stage2/stage2.module';
+import { Stage3Controller } from './agents/stage3/stage3.controller';
+import { Stage3Module } from './agents/stage3/stage3.module';
 
 @Module({
   imports: [
@@ -62,12 +63,12 @@ import { AgentsModule } from './agents/agents.module';
     }),
 
     PlansModule,
-    TestResultModule,
     QuizModule,
     ScheduleModule.forRoot(),
     AgentsModule,
+    Stage3Module,
   ],
-  controllers: [AppController],
+  controllers: [AppController, Stage3Controller],
   providers: [AppService],
 })
 export class AppModule {}

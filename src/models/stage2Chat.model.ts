@@ -1,4 +1,3 @@
-
 import {
   Table,
   Column,
@@ -8,33 +7,29 @@ import {
   DataType,
   AllowNull,
   ForeignKey,
-  BelongsTo,
 } from 'sequelize-typescript';
-import { User } from '../user.model';
+import { User } from './user.model';
 
 @Table({
-  tableName: 'marketing_strategies',
+  tableName: 'strategy_chats',
   timestamps: true,
 })
-export class MarketingStrategy extends Model {
+export class StrategyChat extends Model {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
   declare id: number;
 
   @ForeignKey(() => User)
-  @AllowNull(false)
   @Column(DataType.INTEGER)
-  userId!: number;
-
-  @BelongsTo(() => User)
-  user!: User;
+  declare userId: number;
 
   @AllowNull(false)
-  @Column(DataType.JSONB)
-  auditAnswers!: string[];
+  @Column(DataType.STRING)
+  declare sender: string; 
 
-  @AllowNull(true)
+
+  @AllowNull(false)
   @Column(DataType.TEXT)
-  strategyText!: string;
+  declare message: string;
 }

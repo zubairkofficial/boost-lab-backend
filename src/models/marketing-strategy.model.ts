@@ -7,28 +7,29 @@ import {
   DataType,
   AllowNull,
   ForeignKey,
+  BelongsTo,
 } from 'sequelize-typescript';
 import { User } from './user.model';
 
 @Table({
-  tableName: 'content_chat',
+  tableName: 'marketing_strategies',
   timestamps: true,
 })
-export class StrategyChat extends Model {
+export class MarketingStrategy extends Model {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
   declare id: number;
 
   @ForeignKey(() => User)
+  @AllowNull(false)
   @Column(DataType.INTEGER)
-  declare userId: number;
+  userId!: number;
 
-  @AllowNull(false)
-  @Column(DataType.STRING)
-  declare sender: string;
+  @BelongsTo(() => User)
+  user!: User;
 
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.TEXT)
-  declare message: string;
+  strategyText!: string;
 }

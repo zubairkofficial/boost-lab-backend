@@ -2,12 +2,12 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { AgentDto } from './agent-dto/agent.dto';
-import { SYSTEM_PROMPT } from '../agents/system-prompts/stage2-prompt';
+import { AgentDto } from './stage2.dto';
+import { SYSTEM_PROMPT } from './stage2-prompt';
 import { InjectModel } from '@nestjs/sequelize';
-import { MarketingStrategy } from '../models/marketing-strategy-model/marketing-strategy.model';
-import { User } from '../models/user.model';
-import { StrategyChat } from '../models/StrategyChat.model';
+import { MarketingStrategy } from '../../models/marketing-strategy.model';
+import { User } from '../../models/user.model';
+import { StrategyChat } from '../../models/stage2Chat.model';
 
 @Injectable()
 export class AgentsService {
@@ -79,6 +79,7 @@ export class AgentsService {
           }) as OpenAI.Chat.ChatCompletionMessageParam,
       ),
     ];
+
     const response = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.5,
@@ -86,11 +87,23 @@ export class AgentsService {
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
+
     await this.strategyChatModel.create({
       userId: user.id,
       sender: 'bot',
       message: strategyOutput,
     });
+
+    if (strategyOutput.includes('Stage 3: Content & Branding?')) {
+      const existing = await this.strategyModel.findOne({
+        where: { userId: user.id },
+      });
+
+      await this.strategyModel.upsert({
+        userId: user.id,
+        strategyText: strategyOutput,
+      });
+    }
 
     return {
       success: true,
@@ -124,4 +137,3 @@ export class AgentsService {
     };
   }
 }
-  

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { AgentsService } from './agents.service';
-import { AgentsController } from './agents.controller';
-import { MarketingStrategy } from '../models/marketing-strategy-model/marketing-strategy.model';
-import { User } from '../models/user.model';
-import { StrategyChat } from 'src/models/StrategyChat.model';
+import { AgentsService } from './stage2.service';
+import { AgentsController } from './stage2.controller';
+import { MarketingStrategy } from '../../models/marketing-strategy.model';
+import { User } from '../../models/user.model';
+import { StrategyChat } from 'src/models/stage2Chat.model';
 
 @Module({
   imports: [
