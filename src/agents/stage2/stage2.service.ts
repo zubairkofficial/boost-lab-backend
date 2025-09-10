@@ -94,7 +94,7 @@ export class AgentsService {
       message: strategyOutput,
     });
 
-    if (strategyOutput.includes('Stage 3: Content & Branding?')) {
+    if (strategyOutput.includes('Stage 3: Content & Branding')) {
       const existing = await this.strategyModel.findOne({
         where: { userId: user.id },
       });

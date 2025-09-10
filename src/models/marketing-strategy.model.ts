@@ -24,12 +24,12 @@ export class MarketingStrategy extends Model {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Column(DataType.INTEGER)
-  userId!: number;
+  declare userId: number;
 
   @BelongsTo(() => User)
-  user!: User;
+  declare user: User;
 
   @AllowNull(true)
   @Column(DataType.TEXT)
-  strategyText!: string;
+  declare strategyText: string;
 }
