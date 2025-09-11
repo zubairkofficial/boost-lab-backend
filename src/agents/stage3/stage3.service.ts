@@ -25,11 +25,8 @@ export class Stage3Service {
   }
 
   async generateResponse(userId: number, chatDto: ChatDto): Promise<string> {
-    // Validate user
     const user = await this.userModel.findByPk(userId);
     if (!user) throw new BadRequestException('User not found');
-
-    // Fetch Stage 2 strategy directly from DB
     const stage2 = await this.strategyModel.findOne({
       where: { userId },
       attributes: ['strategyText'],
@@ -43,8 +40,6 @@ export class Stage3Service {
     }
 
     const strategyText = stage2.strategyText;
-
-    // Add initial Stage 2 context to history if first chat
     const existingHistory = await this.stage3ChatModel.count({
       where: { userId },
     });
@@ -56,20 +51,17 @@ export class Stage3Service {
       });
     }
 
-    // Save user message
     await this.stage3ChatModel.create({
       userId,
       sender: 'user',
       message: chatDto.message,
     });
 
-    // Fetch chat history
     const history = await this.stage3ChatModel.findAll({
       where: { userId },
       order: [['createdAt', 'ASC']],
     });
 
-    // Build messages for OpenAI
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: STAGE3_SYSTEM_PROMPT },
       {
@@ -86,8 +78,7 @@ Do not re-ask these questions:\n\n${strategyText}`,
       ),
     ];
 
-    // Debug logs
-    console.log('🟢 Stage 3 Chat Request -----------------');
+    console.log('Stage 3 Chat Request -----------------');
     console.log('System Prompt:', STAGE3_SYSTEM_PROMPT.slice(0, 200) + '...');
     console.log(
       'Stage 2 Strategy:',
@@ -101,7 +92,6 @@ Do not re-ask these questions:\n\n${strategyText}`,
     );
     console.log('-----------------------------------------');
 
-    // Get AI response
     const completion = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.6,
@@ -110,7 +100,6 @@ Do not re-ask these questions:\n\n${strategyText}`,
 
     const reply = completion.choices[0].message.content ?? '';
 
-    // Save bot reply
     await this.stage3ChatModel.create({
       userId,
       sender: 'bot',

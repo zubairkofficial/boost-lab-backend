@@ -16,9 +16,7 @@ import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { QuizService } from 'src/quiz/quiz.service';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2025-06-30' as any,
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '');
 
 @Controller('plans')
 export class PlansController {
@@ -142,5 +140,21 @@ export class PlansController {
   @Post('customer-portal')
   async customerPortal(@Body() body: { customerId: string }) {
     return this.planService.createCustomerPortalSession(body.customerId);
+  }
+  @Get('session-email/:sessionId')
+  async getSessionEmail(@Param('sessionId') sessionId: string) {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    let customerEmail = session.customer_email;
+    if (!customerEmail && session.customer) {
+      const customer = await stripe.customers.retrieve(
+        session.customer as string,
+      );
+      if (!customer.deleted) {
+        customerEmail = (customer as Stripe.Customer).email ?? null;
+      }
+    }
+
+    return { customer_email: customerEmail };
   }
 }
