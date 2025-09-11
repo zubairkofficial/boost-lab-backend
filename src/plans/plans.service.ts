@@ -10,13 +10,13 @@ import Stripe from 'stripe';
 import { Plan } from './../models/plans.model';
 import { Subscription } from '../models/subscription.model';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
-import { Op } from 'sequelize';
 import { MailerService } from '@nestjs-modules/mailer';
 import { User } from 'src/models/user.model';
 
 @Injectable()
 export class PlansService {
   private stripe: Stripe;
+
   constructor(
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
@@ -24,6 +24,7 @@ export class PlansService {
     private readonly planModel: typeof Plan,
     @InjectModel(Subscription)
     private readonly subscriptionModel: typeof Subscription,
+    @InjectModel(User) private readonly userModel: typeof User,
   ) {
     const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
     if (!secretKey) {
@@ -101,6 +102,14 @@ export class PlansService {
     const plan = await this.planModel.findOne({ where: { stripePriceId } });
     if (!plan) throw new NotFoundException('Plan not found for Stripe ID');
 
+    const user = await this.userModel.findByPk(userId);
+    if (!user || !user.stripeCustomerId) {
+      throw new HttpException(
+        'User or Stripe customer ID not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const existingSubscription = await this.subscriptionModel.findOne({
       where: { userId, status: 'active' },
     });
@@ -115,13 +124,13 @@ export class PlansService {
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
+      customer: user.stripeCustomerId,
       line_items: [
         {
           price: stripePriceId,
           quantity: 1,
         },
       ],
-
       success_url: `${process.env.PAYMENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.PAYMENT_URL}/cancel`,
       metadata: {
@@ -135,9 +144,7 @@ export class PlansService {
 
   async handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     const { userId, planId } = session.metadata ?? {};
-    if (!userId || !planId) {
-      return;
-    }
+    if (!userId || !planId) return;
 
     try {
       let subscription = await this.subscriptionModel.findOne({
@@ -173,7 +180,6 @@ export class PlansService {
 
       const user: any =
         await this.planModel.sequelize?.models.User.findByPk(userId);
-      console.log('.....', user);
       if (user && user.email) {
         try {
           await this.sendWelcomeEmail(user.name, user.email);
@@ -208,7 +214,6 @@ export class PlansService {
         <p>Let’s build something amazing together.</p>
         <p>If you ever forget your password, you can reset it from the login screen.</p>
         <p>— The BOOSTLAB Team</p>
-        <p>Thanks!</p>
       `,
       });
       console.log(`✅ sendWelcomeEmail executed for ${email}`);
@@ -236,9 +241,8 @@ export class PlansService {
       include: [Plan],
     });
 
-    if (!subscription) {
+    if (!subscription)
       throw new NotFoundException('No active subscription found');
-    }
 
     const now = new Date();
     if (subscription.expiresAt <= now) {
@@ -267,30 +271,33 @@ export class PlansService {
     };
   }
 
-async getInvoiceHistory(customerId: string, limit = 10) {
-  if (!customerId) throw new Error('Customer ID is required');
-  const invoices = await this.stripe.invoices.list({
-    customer: customerId, 
-    limit,
-    expand: ['data.payment_intent.payment_method'],
-  });
+  async getInvoiceHistory(userId: number, limit = 10) {
+    const user: any =
+      await this.planModel.sequelize?.models.User.findByPk(userId);
+    if (!user || !user.stripe_customer_id)
+      throw new HttpException(
+        'Stripe customer ID missing',
+        HttpStatus.BAD_REQUEST,
+      );
 
-  console.log(invoices);
+    const invoices = await this.stripe.invoices.list({
+      customer: user.stripe_customer_id,
+      limit,
+      expand: ['data.payment_intent.payment_method'],
+    });
 
-  return invoices.data.map(invoice => ({
-    id: invoice.id,
-    number: invoice.number,
-    amountDue: invoice.amount_due,
-    amountPaid: invoice.amount_paid,
-    currency: invoice.currency,
-    status: invoice.status,
-    hostedInvoiceUrl: invoice.hosted_invoice_url,
-    invoicePdf: invoice.invoice_pdf,
-    createdAt: new Date(invoice.created * 1000),
-  }));
-}
-
-
+    return invoices.data.map((invoice) => ({
+      id: invoice.id,
+      number: invoice.number,
+      amountDue: invoice.amount_due,
+      amountPaid: invoice.amount_paid,
+      currency: invoice.currency,
+      status: invoice.status,
+      hostedInvoiceUrl: invoice.hosted_invoice_url,
+      invoicePdf: invoice.invoice_pdf,
+      createdAt: new Date(invoice.created * 1000),
+    }));
+  }
 
   async verifyPaymentSuccess(sessionId: string) {
     try {
@@ -301,10 +308,11 @@ async getInvoiceHistory(customerId: string, limit = 10) {
       return false;
     }
   }
+
   async createCustomerPortalSession(
     customerId: string,
   ): Promise<{ url: string }> {
-    if (!customerId) {  
+    if (!customerId) {
       throw new HttpException(
         'Customer ID is required',
         HttpStatus.BAD_REQUEST,

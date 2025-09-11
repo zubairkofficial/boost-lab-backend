@@ -8,11 +8,12 @@ import { PlansService } from './plans.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { QuizService } from 'src/quiz/quiz.service';
 import { JwtModule } from '@nestjs/jwt';
+import { User } from 'src/models/user.model';
 
 @Module({
   imports: [
     ConfigModule,
-    SequelizeModule.forFeature([Plan, Subscription]),
+    SequelizeModule.forFeature([Plan, Subscription, User]),
     JwtModule.register({}),
     ScheduleModule.forRoot(),
   ],

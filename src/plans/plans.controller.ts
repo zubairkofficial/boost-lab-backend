@@ -16,7 +16,9 @@ import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { QuizService } from 'src/quiz/quiz.service';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
+  apiVersion: '2025-06-30.basil',
+});
 
 @Controller('plans')
 export class PlansController {
@@ -64,6 +66,7 @@ export class PlansController {
   removeAll() {
     return this.planService.removeAll();
   }
+
   @Get('invoice-history/:email')
   async getInvoiceHistory(@Param('email') email: string) {
     const { data: user, error } = await this.quizService['supabase']
@@ -78,12 +81,14 @@ export class PlansController {
 
     return this.planService.getInvoiceHistory(user.stripe_customer_id);
   }
-
   @Post('checkout-session')
   async createCheckoutSession(
-    @Body() body: { stripePriceId: string; id: number; autoRenew?: boolean },
+    @Body() body: { stripePriceId: string; userId: number },
   ) {
-    return this.planService.createCheckoutSession(body.stripePriceId, body.id);
+    return this.planService.createCheckoutSession(
+      body.stripePriceId,
+      body.userId,
+    );
   }
 
   @Post('webhook')
@@ -136,11 +141,11 @@ export class PlansController {
   async cancelSubscription(@Param('userId') userId: number) {
     return this.planService.cancelUserSubscription(userId);
   }
-
   @Post('customer-portal')
   async customerPortal(@Body() body: { customerId: string }) {
     return this.planService.createCustomerPortalSession(body.customerId);
   }
+
   @Get('session-email/:sessionId')
   async getSessionEmail(@Param('sessionId') sessionId: string) {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -158,3 +163,4 @@ export class PlansController {
     return { customer_email: customerEmail };
   }
 }
+  
