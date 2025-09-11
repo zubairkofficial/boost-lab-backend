@@ -49,18 +49,19 @@ export class QuizService {
       throw new BadRequestException('Provide exactly 5 answers');
     }
 
-    const { data: authData, error: authError } =
-      await this.supabase.auth.signUp({ email, password });
-    if (authError) throw new BadRequestException(authError.message);
+    const [authResult, stripeCustomer] = await Promise.all([
+      this.supabase.auth.signUp({ email, password }),
+      this.stripe.customers.create({ email, name }),
+    ]);
 
-    const authUser = authData.user;
+    if (authResult.error)
+      throw new BadRequestException(authResult.error.message);
+    const authUser = authResult.data.user;
     if (!authUser) throw new BadRequestException('Unable to create user');
-
-    const stripeCustomer = await this.stripe.customers.create({ email, name });
 
     const { data: userData, error: userErr } = await this.supabase
       .from('users')
-      .insert([
+      .insert([ 
         {
           name,
           email,
@@ -73,13 +74,15 @@ export class QuizService {
 
     const userId = userData[0].id;
 
+    // Sign JWT
     const token = this.jwtService.sign({
       email,
       name,
       stripe_customer_id: stripeCustomer.id,
     });
 
-    await this.handleBackgroundTasks({
+    // Fire background tasks asynchronously
+    this.handleBackgroundTasks({
       userId,
       auth_uid: authUser.id,
       name,
