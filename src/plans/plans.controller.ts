@@ -146,10 +146,13 @@ export class PlansController {
     return this.planService.createCustomerPortalSession(body.customerId);
   }
 
-  @Get('session-email/:sessionId')
-  async getSessionEmail(@Param('sessionId') sessionId: string) {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+  @Get('session-info/:sessionId')
+  async getSessionInfo(@Param('sessionId') sessionId: string) {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items.data.price.product', 'subscription'],
+    });
 
+    // Get customer email
     let customerEmail = session.customer_email;
     if (!customerEmail && session.customer) {
       const customer = await stripe.customers.retrieve(
@@ -160,7 +163,25 @@ export class PlansController {
       }
     }
 
-    return { customer_email: customerEmail };
+    // Get plan (product) name
+    const planName =
+      session.line_items?.data[0]?.price?.product &&
+      typeof session.line_items.data[0].price.product !== 'string'
+        ? (session.line_items.data[0].price.product as Stripe.Product).name
+        : null;
+
+    // Get subscription status and valid until date
+    let subscriptionStatus: string | null = null;
+
+    if (session.subscription && typeof session.subscription !== 'string') {
+      const subscription = session.subscription as Stripe.Subscription;
+      subscriptionStatus = subscription.status;
+    }
+
+    return {
+      customer_email: customerEmail,
+      plan_name: planName,
+      status: subscriptionStatus,
+    };
   }
 }
-  

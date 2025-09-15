@@ -26,6 +26,7 @@ export class MarketingStrategy extends Model {
   @Column(DataType.INTEGER)
   declare userId: number;
 
+
   @BelongsTo(() => User)
   declare user: User;
 
