@@ -23,7 +23,7 @@ export class QuizService {
       this.config.get<string>('SUPABASE_URL')!,
       this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
     );
-    console.log('///', process.env.OPENAI_API_KEY);
+    // console.log('///', process.env.OPENAI_API_KEY);
     this.openai = new OpenAI({
       apiKey: this.config.get<string>('OPENAI_API_KEY')!,
     });

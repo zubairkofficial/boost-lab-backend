@@ -26,6 +26,7 @@ export class Stage3Service {
 
   async generateResponse(userId: number, chatDto: ChatDto): Promise<string> {
     const user = await this.userModel.findByPk(userId);
+    console.log(user)
     if (!user) throw new BadRequestException('User not found');
     const stage2 = await this.strategyModel.findOne({
       where: { userId },
@@ -67,8 +68,8 @@ export class Stage3Service {
       {
         role: 'system',
         content: `Here is the user’s completed Stage 2 marketing strategy. 
-Use ONLY this data to create content in Stage 3. 
-Do not re-ask these questions:\n\n${strategyText}`,
+                  Use ONLY this data to create content in Stage 3. 
+                  Do not re-ask these questions:\n\n${strategyText}`,
       },
       ...history.map(
         (msg): OpenAI.Chat.ChatCompletionMessageParam => ({
@@ -99,16 +100,14 @@ Do not re-ask these questions:\n\n${strategyText}`,
     });
 
     const reply = completion.choices[0].message.content ?? '';
-
     await this.stage3ChatModel.create({
       userId,
       sender: 'bot',
       message: reply,
     });
-
     return reply;
   }
-
+s
   async getHistory(userId: number) {
     return this.stage3ChatModel.findAll({
       where: { userId },

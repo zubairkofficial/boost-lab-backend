@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { AgentDto } from './stage2.dto';
 import { AgentsService } from './stage2.service';
