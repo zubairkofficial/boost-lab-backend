@@ -44,7 +44,6 @@ export class TestResultService {
       throw new BadRequestException('Provide exactly 5 answers');
     }
 
-    // Fetch previous submission
     const { data: prevData, error: prevError } = await this.supabase
       .from('messages')
       .select('id, html_report')
@@ -56,8 +55,6 @@ export class TestResultService {
     }
 
     const prevHtml = prevData.html_report || '';
-
-    // Construct user message for AI
     const userMessage =
       `User Email: ${email}\nPrevious Report:\n${prevHtml}\n` +
       answers.map((a) => `${a.question}: ${a.choice}`).join('\n');
@@ -72,16 +69,11 @@ export class TestResultService {
     });
 
     const newHtmlReport = completion.choices?.[0]?.message?.content || '';
-
-    // Convert class instances to plain objects
     const plainAnswers = answers.map((a) => ({
       question: a.question,
       choice: a.choice,
     }));
 
-    console.log('Saving answers:', plainAnswers); // Debug check
-
-    // Update Supabase record
     const { error: updateErr } = await this.supabase
       .from('messages')
       .update({ answers: plainAnswers, html_report: newHtmlReport })
@@ -91,7 +83,6 @@ export class TestResultService {
       throw new BadRequestException(updateErr.message);
     }
 
-    // Send updated report via email
     if (newHtmlReport) {
       await this.transporter.sendMail({
         from: `"BOOSTLAB" <${this.config.get<string>('SMTP_USER')}>`,

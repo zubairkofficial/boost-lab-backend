@@ -87,7 +87,6 @@ export class AgentsService {
     });
 
     const strategyOutput = response.choices?.[0]?.message?.content || '';
-
     await this.strategyChatModel.create({
       userId: user.id,
       sender: 'bot',

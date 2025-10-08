@@ -24,7 +24,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
 export class PlansController {
   constructor(
     private readonly planService: PlansService,
-    private readonly quizService: QuizService, // inject QuizService
+    private readonly quizService: QuizService, 
   ) {}
 
   @Post('create')
@@ -102,7 +102,7 @@ export class PlansController {
         signature,
         process.env.STRIPE_WEBHOOK_SECRET!,
       );
-      console.log('✅ Webhook received:', event.type);
+      console.log(' Webhook received:', event.type);
 
       switch (event.type) {
         case 'checkout.session.completed':
@@ -121,7 +121,7 @@ export class PlansController {
 
       return res.json({ received: true });
     } catch (err: any) {
-      console.error('❌ Webhook error:', err.message);
+      console.error(' Webhook error:', err.message);
       return res.status(400).send(`Webhook error: ${err.message}`);
     }
   }
@@ -152,7 +152,6 @@ export class PlansController {
       expand: ['line_items.data.price.product', 'subscription'],
     });
 
-    // Get customer email
     let customerEmail = session.customer_email;
     if (!customerEmail && session.customer) {
       const customer = await stripe.customers.retrieve(
@@ -163,14 +162,12 @@ export class PlansController {
       }
     }
 
-    // Get plan (product) name
     const planName =
       session.line_items?.data[0]?.price?.product &&
       typeof session.line_items.data[0].price.product !== 'string'
         ? (session.line_items.data[0].price.product as Stripe.Product).name
         : null;
 
-    // Get subscription status and valid until date
     let subscriptionStatus: string | null = null;
 
     if (session.subscription && typeof session.subscription !== 'string') {

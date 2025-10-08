@@ -170,11 +170,11 @@ export class PlansService {
         );
 
         console.log(
-          `✅ Subscription created: user ${userId}, plan ${planId}, session ${session.id}`,
+          `Subscription created: user ${userId}, plan ${planId}, session ${session.id}`,
         );
       } else {
         console.log(
-          `ℹ️ Subscription already exists for session ${session.id}. Skipping creation, but sending email anyway.`,
+          `Subscription already exists for session ${session.id}. Skipping creation, but sending email anyway.`,
         );
       }
 
@@ -183,17 +183,17 @@ export class PlansService {
       if (user && user.email) {
         try {
           await this.sendWelcomeEmail(user.name, user.email);
-          console.log(`📧 Welcome email sent to ${user.email}`);
+          console.log(`Welcome email sent to ${user.email}`);
         } catch (err: any) {
-          console.error('❌ Failed to send welcome email:', err.message ?? err);
+          console.error('Failed to send welcome email:', err.message ?? err);
         }
       } else {
-        console.warn('⚠️ User not found or email missing:', userId);
+        console.warn('User not found or email missing:', userId);
       }
 
       return subscription;
     } catch (err: any) {
-      console.error('❌ Error in handleSuccessfulPayment:', err.message ?? err);
+      console.error('Error in handleSuccessfulPayment:', err.message ?? err);
     }
   }
 
@@ -216,7 +216,7 @@ export class PlansService {
         <p>— The BOOSTLAB Team</p>
       `,
       });
-      console.log(`✅ sendWelcomeEmail executed for ${email}`);
+      console.log(`sendWelcomeEmail executed for ${email}`);
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);
       throw err;

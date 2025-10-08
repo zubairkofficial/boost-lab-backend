@@ -26,7 +26,7 @@ export class Stage3Service {
 
   async generateResponse(userId: number, chatDto: ChatDto): Promise<string> {
     const user = await this.userModel.findByPk(userId);
-    console.log(user)
+    console.log(user);
     if (!user) throw new BadRequestException('User not found');
     const stage2 = await this.strategyModel.findOne({
       where: { userId },
@@ -78,21 +78,6 @@ export class Stage3Service {
         }),
       ),
     ];
-
-    console.log('Stage 3 Chat Request -----------------');
-    console.log('System Prompt:', STAGE3_SYSTEM_PROMPT.slice(0, 200) + '...');
-    console.log(
-      'Stage 2 Strategy:',
-      strategyText
-        ? strategyText.slice(0, 500) + '...'
-        : '[EMPTY STRATEGY TEXT]',
-    );
-    console.log(
-      'Messages being sent to OpenAI:',
-      JSON.stringify(messages, null, 2),
-    );
-    console.log('-----------------------------------------');
-
     const completion = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.6,
@@ -106,8 +91,7 @@ export class Stage3Service {
       message: reply,
     });
     return reply;
-  }
-s
+  };
   async getHistory(userId: number) {
     return this.stage3ChatModel.findAll({
       where: { userId },
