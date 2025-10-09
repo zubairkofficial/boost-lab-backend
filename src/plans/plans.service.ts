@@ -183,7 +183,7 @@ export class PlansService {
       if (user && user.email) {
         try {
           await this.sendWelcomeEmail(user.name, user.email);
-          console.log(`Welcome email sent to ${user.email}`);
+          console.log(`"🤌🤌"Welcome email sent to ${user.email}`);
         } catch (err: any) {
           console.error('Failed to send welcome email:', err.message ?? err);
         }
