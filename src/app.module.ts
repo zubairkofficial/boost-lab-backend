@@ -52,7 +52,7 @@ import { Stage3Module } from './agents/stage3/stage3.module';
             pass: configService.get<string>('SMTP_PASS'),
           },
           tls: {
-            rejectUnauthorized: false, 
+            rejectUnauthorized: false,
           },
         },
         defaults: {

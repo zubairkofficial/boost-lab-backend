@@ -10,18 +10,17 @@ import Stripe from 'stripe';
 import { Plan } from './../models/plans.model';
 import { Subscription } from '../models/subscription.model';
 import { CreatePlanDto, UpdatePlanDto } from './dto/dto';
-import { MailerService } from '@nestjs-modules/mailer';
 import { User } from 'src/models/user.model';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class PlansService {
   private stripe: Stripe;
+  private transporter: nodemailer.Transporter;
 
   constructor(
-    private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
-    @InjectModel(Plan)
-    private readonly planModel: typeof Plan,
+    @InjectModel(Plan) private readonly planModel: typeof Plan,
     @InjectModel(Subscription)
     private readonly subscriptionModel: typeof Subscription,
     @InjectModel(User) private readonly userModel: typeof User,
@@ -32,6 +31,16 @@ export class PlansService {
     }
 
     this.stripe = new Stripe(secretKey);
+
+    this.transporter = nodemailer.createTransport({
+      host: this.configService.get<string>('SMTP_HOST'),
+      port: Number(this.configService.get<string>('SMTP_PORT') || 587),
+      secure: false,
+      auth: {
+        user: this.configService.get<string>('SMTP_USER'),
+        pass: this.configService.get<string>('SMTP_PASS'),
+      },
+    });
   }
 
   async create(dto: CreatePlanDto): Promise<Plan> {
@@ -197,7 +206,8 @@ export class PlansService {
 
   async sendWelcomeEmail(name: string, email: string) {
     try {
-      await this.mailerService.sendMail({
+      await this.transporter.sendMail({
+        from: `"BOOSTLAB" <${this.configService.get<string>('SMTP_USER')}>`,
         to: email,
         subject: 'Welcome to BOOSTLAB – Your Account is Ready 🚀',
         html: `
@@ -213,12 +223,12 @@ export class PlansService {
         <p>If you ever forget your password, you can reset it from the login screen.</p>
         <p>— The BOOSTLAB Team</p>
       `,
-      },);
+      });
       console.log(`sendWelcomeEmail executed for ${email}`);
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);
       throw err;
-    } 
+    }
   }
 
   async handleSubscriptionCancelled(subscription: Stripe.Subscription) {
