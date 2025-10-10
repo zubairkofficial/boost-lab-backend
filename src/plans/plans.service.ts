@@ -31,9 +31,7 @@ export class PlansService {
       throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
     }
 
-    this.stripe = new Stripe(secretKey, {
-      apiVersion: '2025-06-30.basil',
-    });
+    this.stripe = new Stripe(secretKey);
   }
 
   async create(dto: CreatePlanDto): Promise<Plan> {

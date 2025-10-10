@@ -91,7 +91,7 @@ export class Stage3Service {
       message: reply,
     });
     return reply;
-  };
+  }
   async getHistory(userId: number) {
     return this.stage3ChatModel.findAll({
       where: { userId },
