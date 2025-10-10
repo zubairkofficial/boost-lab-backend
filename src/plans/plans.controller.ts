@@ -24,7 +24,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
 export class PlansController {
   constructor(
     private readonly planService: PlansService,
-    private readonly quizService: QuizService, 
+    private readonly quizService: QuizService,
   ) {}
 
   @Post('create')

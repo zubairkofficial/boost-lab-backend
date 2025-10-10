@@ -35,7 +35,6 @@ export class PlansService {
       apiVersion: '2025-06-30.basil',
     });
 
-    // ✅ Setup nodemailer transporter (same as TestResultService)
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port: Number(this.configService.get<string>('SMTP_PORT') || 587),
@@ -185,21 +184,8 @@ export class PlansService {
         );
       } else {
         console.log(
-          `Subscription already exists for session ${session.id}. Skipping creation, but sending email anyway.`,
+          `Subscription already exists for session ${session.id}. Skipping creation.`,
         );
-      }
-
-      const user: any =
-        await this.planModel.sequelize?.models.User.findByPk(userId);
-      if (user && user.email) {
-        try {
-          await this.sendWelcomeEmail(user.name, user.email);
-          console.log(`🤌🤌 Welcome email sent to ${user.email}`);
-        } catch (err: any) {
-          console.error('Failed to send welcome email:', err.message ?? err);
-        }
-      } else {
-        console.warn('User not found or email missing:', userId);
       }
 
       return subscription;
@@ -208,7 +194,6 @@ export class PlansService {
     }
   }
 
-  // ✅ Updated to use nodemailer directly (same as TestResultService)
   async sendWelcomeEmail(name: string, email: string) {
     try {
       await this.transporter.sendMail({
@@ -229,7 +214,6 @@ export class PlansService {
           <p>— The BOOSTLAB Team</p>
         `,
       });
-
       console.log(`sendWelcomeEmail executed for ${email}`);
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);
@@ -316,10 +300,24 @@ export class PlansService {
   async verifyPaymentSuccess(sessionId: string) {
     try {
       const session = await this.stripe.checkout.sessions.retrieve(sessionId);
-      return session.payment_status === 'paid';
+
+      if (session.payment_status === 'paid') {
+        const { userId, planId } = session.metadata ?? {};
+        if (userId && planId) {
+          await this.handleSuccessfulPayment(session);
+
+          const user = await this.userModel.findByPk(userId);
+          if (user && user.email) {
+            await this.sendWelcomeEmail(user.name ?? '', user.email);
+            console.log(`✅ Welcome email sent to ${user.email}`);
+          }
+        }
+        return { isPaid: true };
+      }
+      return { isPaid: false };
     } catch (error) {
       console.error('Error verifying payment:', error);
-      return false;
+      return { isPaid: false };
     }
   }
 
