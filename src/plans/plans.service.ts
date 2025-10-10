@@ -20,7 +20,8 @@ export class PlansService {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectModel(Plan) private readonly planModel: typeof Plan,
+    @InjectModel(Plan)
+    private readonly planModel: typeof Plan,
     @InjectModel(Subscription)
     private readonly subscriptionModel: typeof Subscription,
     @InjectModel(User) private readonly userModel: typeof User,
@@ -30,8 +31,11 @@ export class PlansService {
       throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
     }
 
-    this.stripe = new Stripe(secretKey);
+    this.stripe = new Stripe(secretKey, {
+      apiVersion: '2025-06-30.basil',
+    });
 
+    // ✅ Setup nodemailer transporter (same as TestResultService)
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port: Number(this.configService.get<string>('SMTP_PORT') || 587),
@@ -190,7 +194,7 @@ export class PlansService {
       if (user && user.email) {
         try {
           await this.sendWelcomeEmail(user.name, user.email);
-          console.log(`"🤌🤌"Welcome email sent to ${user.email}`);
+          console.log(`🤌🤌 Welcome email sent to ${user.email}`);
         } catch (err: any) {
           console.error('Failed to send welcome email:', err.message ?? err);
         }
@@ -204,6 +208,7 @@ export class PlansService {
     }
   }
 
+  // ✅ Updated to use nodemailer directly (same as TestResultService)
   async sendWelcomeEmail(name: string, email: string) {
     try {
       await this.transporter.sendMail({
@@ -211,19 +216,20 @@ export class PlansService {
         to: email,
         subject: 'Welcome to BOOSTLAB – Your Account is Ready 🚀',
         html: `
-        <p>Hi ${name},</p>
-        <p>Thanks for joining BOOSTLAB! 🎉<br/>
-        Your personal account has been created successfully.</p>
-        <p>
-          🔗 <a href="https://app.boostlab.ph/auth/login">Go to login</a><br/>
-          📧 Email: ${email}<br/>
-          🔑 Password: <i>the one you set during registration</i>
-        </p>
-        <p>Let’s build something amazing together.</p>
-        <p>If you ever forget your password, you can reset it from the login screen.</p>
-        <p>— The BOOSTLAB Team</p>
-      `,
+          <p>Hi ${name},</p>
+          <p>Thanks for joining BOOSTLAB! 🎉<br/>
+          Your personal account has been created successfully.</p>
+          <p>
+            🔗 <a href="https://app.boostlab.ph/auth/login">Go to login</a><br/>
+            📧 Email: ${email}<br/>
+            🔑 Password: <i>the one you set during registration</i>
+          </p>
+          <p>Let’s build something amazing together.</p>
+          <p>If you ever forget your password, you can reset it from the login screen.</p>
+          <p>— The BOOSTLAB Team</p>
+        `,
       });
+
       console.log(`sendWelcomeEmail executed for ${email}`);
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);
