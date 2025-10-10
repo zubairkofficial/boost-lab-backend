@@ -213,7 +213,7 @@ export class PlansService {
         <p>If you ever forget your password, you can reset it from the login screen.</p>
         <p>— The BOOSTLAB Team</p>
       `,
-      });
+      },);
       console.log(`sendWelcomeEmail executed for ${email}`);
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);

@@ -34,7 +34,6 @@ import { Stage3Module } from './agents/stage3/stage3.module';
         database: configService.get<string>('DB_NAME'),
         autoLoadModels: true,
         synchronize: true,
-        secure: true,
         models: [User, Plan, Subscription],
       }),
     }),
@@ -46,9 +45,10 @@ import { Stage3Module } from './agents/stage3/stage3.module';
         transport: {
           host: configService.get<string>('SMTP_HOST'),
           port: configService.get<number>('SMTP_PORT'),
+          secure: false,
           auth: {
-            user: configService.get<string>('EMAIL_USER'),
-            pass: configService.get<string>('EMAIL_PASS'),
+            user: configService.get<string>('SMTP_USER'), 
+            pass: configService.get<string>('SMTP_PASS'), 
           },
         },
         defaults: {
