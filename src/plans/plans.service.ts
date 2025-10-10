@@ -218,7 +218,7 @@ export class PlansService {
     } catch (err: any) {
       console.error('sendWelcomeEmail failed:', err.message ?? err);
       throw err;
-    }
+    } 
   }
 
   async handleSubscriptionCancelled(subscription: Stripe.Subscription) {

@@ -34,6 +34,7 @@ import { Stage3Module } from './agents/stage3/stage3.module';
         database: configService.get<string>('DB_NAME'),
         autoLoadModels: true,
         synchronize: true,
+        secure: true,
         models: [User, Plan, Subscription],
       }),
     }),
