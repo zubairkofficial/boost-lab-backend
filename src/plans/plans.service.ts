@@ -149,6 +149,19 @@ export class PlansService {
       },
     });
 
+    if (user && user.email) {
+      setTimeout(async () => {
+        try {
+          await this.sendWelcomeEmail(user.name ?? '', user.email ?? '');
+          console.log(`✅ Welcome email sent to ${user.email} `);
+        } catch (err: any) {
+          console.error(
+            'Failed to send delayed welcome email:',
+            err.message ?? err,
+          );
+        }
+      }, 10000);
+    }
     return { url: session.url! };
   }
 
@@ -300,24 +313,10 @@ export class PlansService {
   async verifyPaymentSuccess(sessionId: string) {
     try {
       const session = await this.stripe.checkout.sessions.retrieve(sessionId);
-
-      if (session.payment_status === 'paid') {
-        const { userId, planId } = session.metadata ?? {};
-        if (userId && planId) {
-          await this.handleSuccessfulPayment(session);
-
-          const user = await this.userModel.findByPk(userId);
-          if (user && user.email) {
-            await this.sendWelcomeEmail(user.name ?? '', user.email);
-            console.log(`✅ Welcome email sent to ${user.email}`);
-          }
-        }
-        return { isPaid: true };
-      }
-      return { isPaid: false };
+      return session.payment_status === 'paid';
     } catch (error) {
       console.error('Error verifying payment:', error);
-      return { isPaid: false };
+      return false;
     }
   }
 
