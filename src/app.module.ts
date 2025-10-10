@@ -46,9 +46,13 @@ import { Stage3Module } from './agents/stage3/stage3.module';
           host: configService.get<string>('SMTP_HOST'),
           port: configService.get<number>('SMTP_PORT'),
           secure: false,
+          requireTLS: true,
           auth: {
-            user: configService.get<string>('SMTP_USER'), 
-            pass: configService.get<string>('SMTP_PASS'), 
+            user: configService.get<string>('SMTP_USER'),
+            pass: configService.get<string>('SMTP_PASS'),
+          },
+          tls: {
+            rejectUnauthorized: false, 
           },
         },
         defaults: {
